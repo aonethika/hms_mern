@@ -66,7 +66,8 @@ export const addDoctors = async (req, res) => {
       workingHours: workingHours || { startTime: "10:00", endTime: "17:00" },
     });
 
-    await sendEmailAccountCreated(email, name, password);
+    sendEmailAccountCreated(email, name, password)
+      .catch(err => console.error("Email error:", err));
 
     const doctorResponse = doctor.toObject();
     delete doctorResponse.password;
@@ -276,10 +277,21 @@ export const patientRegistration = async (req, res) => {
 
     let user = null;
 
-
-
     if (email) {
       user = await User.findOne({ email });
+    }
+
+    const existing = await Patient.findOne({
+      phone,
+      name,
+      dob: new Date(dob)
+    });
+
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        patient: existing
+      });
     }
 
     const patient = await Patient.create({
@@ -306,21 +318,43 @@ export const patientRegistration = async (req, res) => {
     });
   }
 };
-// ----------------------------- GET ALL PATIENTS -----------------------------
-export const getAllPatients = async (req, res) => {
+
+
+ export const getAllPatients = async (req, res) => {
   try {
-    const patients = await User.find({ role: "patient" }).select("-password");
+    const patients = await Appointment.aggregate([
+      { $match: { status: "completed" } },
+      { $group: { _id: "$patientId" } },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "_id",
+          foreignField: "_id",
+          as: "patient"
+        }
+      },
+      { $unwind: "$patient" },
+      {
+        $project: {
+          _id: "$patient._id",
+          name: "$patient.name",
+          phone: "$patient.phone",
+          gender: "$patient.gender",
+          bloodGroup: "$patient.bloodGroup"
+        }
+      }
+    ]);
 
     res.status(200).json({
       success: true,
       count: patients.length,
-      patients,
+      patients
     });
   } catch (err) {
     console.error("FETCH PATIENTS ERROR:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch patients",
+      message: "Failed to fetch patients"
     });
   }
 };
@@ -770,7 +804,7 @@ export const approveLeave = async (req, res) => {
               receiver: appt.patientId.userId,
               receiverRole: "patient",
               appointmentId: appt._id,
-              type: "appointment",
+              type: "leave",
             });
           }
 
@@ -853,6 +887,15 @@ export const rejectLeave = async (req, res) => {
     const text = `Your leave request from ${from} to ${to} is rejected.
     
     Click here to see more`;
+
+     await Notification.create({
+      message: text,
+      receiver: leave.doctorId,
+      receiverRole: "doctor",
+      leaveId: leave._id,
+      type: "leave"
+    })
+
 
     res.status(200).json({
       success: true,
@@ -1051,9 +1094,13 @@ export const getNotificationsAdmin = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
+     const unreadCount = notifications.filter(n => !n.isRead).length;
+
+
     res.status(200).json({
       success: true,
-      notifications
+      notifications,
+      count: unreadCount
     });
   } catch (err) {
     console.log("GET NOTIFICATIONS ERROR:", err);
@@ -1135,6 +1182,103 @@ export const markAllNotificationsReadAdmin = async (req, res) => {
   }
 };
 
+
+export const getAllAvailableDoctorsByDateAdmin = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    if (!date) return res.status(400).json({ success: false, message: "Date is required" });
+
+    const selectedDate = new Date(date + "T00:00:00.000Z");
+    if (isNaN(selectedDate.getTime()))
+      return res.status(400).json({ success: false, message: "Invalid date format" });
+
+    const doctors = await User.find({role: "doctor" })
+      .populate("departmentId", "name")
+   
+    const availableDoctors = [];
+
+    const startOfDay = new Date(date + "T00:00:00.000Z");
+    const endOfDay = new Date(date + "T23:59:59.999Z");
+
+    
+
+    for (const doc of doctors){
+      const leave = await Leave.findOne({
+        doctorId: doc._id,
+        status: "approved",
+        fromDate: { $lte: endOfDay },
+        toDate: { $gte: startOfDay }
+      });
+      if(!leave){
+        availableDoctors.push({
+          doctorId: doc._id,
+          doctorName: doc.name,
+          consultationFee: doc.consultationFee,
+          qualifications: doc.qualification,
+          specialization: doc.specialization,
+          departmentId: doc.departmentId,
+          departmentName: doc.departmentId?.name,
+          status: "Available"
+        })
+      }
+       console.log("Selected date:", selectedDate);
+    console.log("Doctor:", doc.name, "Leave found:", leave);
+    }
+
+   
+   return res.status(200).json({
+      success: true,
+      data: availableDoctors,
+    });
+  } catch (err) {
+    console.log("GET AVAILABILITY ERROR:", err);
+    res.status(500).json({ success: false, message: "Failed to get availability" });
+  }
+};
+
+export const editAdminProfile = async(req, res) =>{
+  try{
+    const userId = req.user._id;
+
+     const user = await User.findOneAndUpdate(
+      { _id: userId, role: "admin" },
+      req.body,
+      { returnDocument: "after", runValidators: true }
+    )
+      .select("-password")
+
+      if(!user) return res.status(404).json({success: false, message: "No user found"})
+      
+      res.status(200).json({success: true, message:"Admin Profile Updated", user})
+
+  }catch(err){
+    res.status(500).json({success: false, message: err.message})
+  }
+}
+
+export const getPatientHistory = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    const appointments = await Appointment.find({ patientId })
+      .populate("doctorId", "name department specialization qualification")
+      .populate("departmentId", "name")
+      .sort({ date: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: appointments.length,
+      appointments
+    });
+  } catch (err) {
+    console.error("FETCH PATIENT HISTORY ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch patient history"
+    });
+  }
+};
 
 
 

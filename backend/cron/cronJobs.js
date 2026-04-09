@@ -8,10 +8,18 @@ export const startCronJobs = () => {
   console.log("Cron job initialized..."); 
 
   // ---------------- NO SHOW CRON ----------------
-  cron.schedule("0 0 * * *", async () => {
-    console.log("Running no-show cron...");
-    await markNoShowInternal();
-  });
+  cron.schedule(
+    "59 23 * * *",
+    async () => {
+      console.log("Running no-show cron...");
+      await markNoShowInternal();
+    },
+    {
+      timezone: "Asia/Kolkata", 
+    }
+  );
+
+
 
   // ---------------- LEAVE STATUS CRON ----------------
   cron.schedule("0 * * * *", async () => {

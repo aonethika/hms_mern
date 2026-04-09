@@ -8,7 +8,6 @@ import {
   getAppointmentDetails,
   cancelAppointment,
   rescheduleAppointment,
-  getAvailableDoctors,
   getDoctorsByDepartment,
   getVisitHistory,
   getPrescriptionDetails,
@@ -26,7 +25,8 @@ import {
   getPatientSlots,
   getUpcomingAppointments,
   markAllNotificationsRead,
-  getDoctorAvailabilityByDate
+  getDoctorAvailabilityByDate,
+  getAllAvailableDoctorsByDatePatient
 } from "../controllers/patientController.js";
 
 const router = express.Router();
@@ -47,7 +47,7 @@ router.get("/appointments/:appointmentId", getAppointmentDetails);
 router.put("/appointments/:appointmentId/cancel", cancelAppointment);
 router.put("/appointments/:appointmentId/reschedule", rescheduleAppointment);
 
-router.get("/doctors/available", getAvailableDoctors);
+// router.get("/doctors/available", getAvailableDoctors);
 
 router.get("/doctors/:doctorId/availability", getDoctorAvailabilityByDate);
 
@@ -67,6 +67,8 @@ router.get("/profile", getMyProfile);
 router.put("/edit-profile", updateMyProfile);
 
 router.get("/dashboard", getPatientDashboardStats);
+
+router.get("/doctors/avaialable",getAllAvailableDoctorsByDatePatient);
 
 export default router;
 

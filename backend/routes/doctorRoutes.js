@@ -7,6 +7,7 @@ import {
   completeAppointmentByDoctor,
   createPrescription,
   doctorMarkFollowUp,
+  getAppointmentsByDateAndStatus,
   getDoctorAppointmentsByStatus,
   getDoctorDashboardStats,
   getDoctorLeaves,
@@ -14,17 +15,18 @@ import {
   getDoctorTodayQueue,
   getMyFollowUpsDoctor,
   getMyPatients,
+  getMyProfileDoctor,
   getNotificationsDoctor,
   getPatientByAppointmentId,
   getPatientMedicalHistory,
   getPrescriptionById,
-  getTodayAppointments,
   markAllNotificationsReadDoctor,
   markNotificationReadDoctor,
   requestLeave,
   skipCurrentPatientByDoctor,
   startConsultation,
-  updateDoctorAvailability
+  updateDoctorAvailability,
+  updateDoctorSelf
 } from "../controllers/doctorController.js";
 
 const router = express.Router();
@@ -34,9 +36,13 @@ router.use(roleMiddleware("doctor"));
 
 router.get("/my-patients", getMyPatients);
 
-router.get("/appointments/today", getTodayAppointments);
+router.get("/appointments/today", getAppointmentsByDateAndStatus);
 
 router.get("/queue/today", getDoctorTodayQueue);
+
+router.get("/me", getMyProfileDoctor)
+
+router.put("/update-profile", updateDoctorSelf)
 
 router.put("/appointment/:appointmentId/start", startConsultation);
 
@@ -65,7 +71,7 @@ router.get("/appointments", getDoctorAppointmentsByStatus);
 
 router.post("/leave-request", requestLeave)
 
-router.post("/attendance", getDoctorMonthlyAttendance);
+router.get("/attendance", getDoctorMonthlyAttendance);
 
 router.put("/leave/cancel/:leaveId", cancelLeave);
 

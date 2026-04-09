@@ -1,6 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/verifyToken.js';
-import { addDoctors, adminDashboardStats, approveLeave, assignDoctorDepartment, checkDoctorAvailability, deactivateDoctor, deactivatePatient, deleteDoctor, getALLDoctorsAdmin, getAllLeaveRequests, getAllPatients, getAllPatientsMinimal, getDoctorById, getDoctorLeavesAdmin, getDoctorMonthlyAttendanceAdmin, getDoctorQueue, getNotificationsAdmin, getPatientById, getPrescriptionByAppointmentId, markAllNotificationsReadAdmin, markNotificationReadAdmin, patientRegistration, reactivateDoctor, rejectLeave, sendBroadcastNotification, updateDoctor, updateLeaveStatus } from '../controllers/adminController.js';
+import { addDoctors, adminDashboardStats, approveLeave, assignDoctorDepartment, checkDoctorAvailability, deactivateDoctor, deactivatePatient, deleteDoctor, editAdminProfile, getAllAvailableDoctorsByDateAdmin, getALLDoctorsAdmin, getAllLeaveRequests, getAllPatients, getAllPatientsMinimal, getDoctorById, getDoctorLeavesAdmin, getDoctorMonthlyAttendanceAdmin, getDoctorQueue, getNotificationsAdmin, getPatientById, getPatientHistory, getPrescriptionByAppointmentId, markAllNotificationsReadAdmin, markNotificationReadAdmin, patientRegistration, reactivateDoctor, rejectLeave, sendBroadcastNotification, updateDoctor, updateLeaveStatus } from '../controllers/adminController.js';
 import roleMiddleware from '../middleware/roleMiddleware.js';
 import { getPatientsByPhone } from '../controllers/appoinmentController.js';
 
@@ -8,6 +8,8 @@ import { getPatientsByPhone } from '../controllers/appoinmentController.js';
 const router = express.Router();
 
 router.use(authMiddleware);
+
+router.put("/update",editAdminProfile)
 
 router.post("/doctor", roleMiddleware("admin"), addDoctors)
 router.get("/doctors", roleMiddleware("admin"), getALLDoctorsAdmin)
@@ -22,13 +24,15 @@ router.get("/dashboard", roleMiddleware("admin"), adminDashboardStats)
 router.post("/patient", roleMiddleware("admin"), patientRegistration);
 router.get("/patients", roleMiddleware("admin"), getAllPatients);
 router.get("/patients/minimal", roleMiddleware("admin"), getAllPatientsMinimal);
-router.get("/patient/phone/:phone", roleMiddleware("admin"), getPatientsByPhone);
+router.get("/patients/phone/:phone", roleMiddleware("admin"), getPatientsByPhone);
 router.get("/patient/:patientId", roleMiddleware("admin"), getPatientById);
 router.put("/patient/:patientId/deactivate", roleMiddleware("admin"), deactivatePatient);
 
 
 router.put("/doctor/:doctorId/department", roleMiddleware("admin"), assignDoctorDepartment);
-router.get("/doctor/:doctorId/queue",roleMiddleware("admin"),getDoctorQueue)
+router.get("/doctor/:doctorId/queue",roleMiddleware("admin"),getDoctorQueue);
+
+router.get("/doctors/available",getAllAvailableDoctorsByDateAdmin)
 
 router.post("/broadcast", roleMiddleware("admin"), sendBroadcastNotification)
 
@@ -46,9 +50,12 @@ router.get("/attendance/:doctorId",getDoctorMonthlyAttendanceAdmin);
 
 router.get("/leaves/:doctorId", getDoctorLeavesAdmin);
 
+
 router.get("/doctor/:id/availability", checkDoctorAvailability);
 
 router.get("/prescription/:appointmentId", getPrescriptionByAppointmentId);
+
+router.get("/patient-history/:patientId", getPatientHistory )
 
 
 export default router

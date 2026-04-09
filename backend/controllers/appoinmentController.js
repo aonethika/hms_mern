@@ -23,7 +23,6 @@ const calculateAge = (dobStr) => {
 export const createAppointmentByAdmin = async (req, res) => {
   try {
     const {
-      patientType,
       patientId,
       name,
       phone,
@@ -56,16 +55,11 @@ export const createAppointmentByAdmin = async (req, res) => {
       return res.status(400).json({ success: false, message: "Fill required fields" });
     }
 
-    if (patientType === "walk-in" && (!name || !phone || !dob || !gender)) {
-      return res.status(400).json({ success: false, message: "Name, phone, dob and gender are required" });
-    }
-
-    if (patientType === "register" && (!name || !phone || !email || !dob || !gender)) {
-      return res.status(400).json({ success: false, message: "Name, Phone, Email, Gender and DOB are required" });
-    }
-
-    if (patientType === "registered" && !patientId) {
-      return res.status(400).json({ success: false, message: "PatientId required" });
+    if (!patientId && (!name || !phone || !dob || !gender)) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, phone, dob and gender are required"
+      });
     }
 
     const doctor = await User.findById(doctorId)
@@ -117,57 +111,11 @@ export const createAppointmentByAdmin = async (req, res) => {
     let patientRef = null;
     let patientObj = null;
 
-    if (patientType === "walk-in") {
-      const walkInPatient = await Patient.create({
-        name,
-        gender,
-        phone,
-        bloodGroup,
-        dob,
-        age: calculateAge(dob)
-      });
-
-      patientRef = walkInPatient._id;
-      patientObj = { name, phone, gender, bloodGroup, dob, age: calculateAge(dob) };
-    }
-
-    else if (patientType === "register") {
-
-      const password = crypto.randomBytes(8).toString("hex");
-      const hashedPassword = await argon2.hash(password);
-
-      const newUser = await User.create({
-        name,
-        phone,
-        email,
-        password: hashedPassword,
-        gender,
-        dob,
-        bloodGroup,
-        role: "patient",
-        isActive: true
-      });
-
-      const newPatient = await Patient.create({
-        userId: newUser._id,
-        name,
-        email,
-        phone,
-        gender,
-        dob
-      });
-
-      await sendEmailAccountCreated(newUser.email,newUser.name, password);
-
-      patientRef = newPatient._id;
-      patientObj = { name, phone, email, gender, dob, bloodGroup };
-    }
-
-    else if (patientType === "registered") {
+    if (patientId) {
       const existingPatient = await Patient.findById(patientId);
 
       if (!existingPatient) {
-        return res.status(404).json({ success: false, message: "Registered patient not found" });
+        return res.status(404).json({ success: false, message: "Patient not found" });
       }
 
       patientRef = existingPatient._id;
@@ -179,6 +127,46 @@ export const createAppointmentByAdmin = async (req, res) => {
         gender: existingPatient.gender,
         dob: existingPatient.dob
       };
+    } else {
+      const normalizedDob = new Date(dob);
+      normalizedDob.setHours(0, 0, 0, 0);
+
+      const existing = await Patient.findOne({
+        phone,
+        name: { $regex: `^${name.trim()}$`, $options: "i" },
+        dob: normalizedDob
+      });
+
+      if (existing) {
+        patientRef = existing._id;
+        patientObj = {
+          name: existing.name,
+          phone: existing.phone,
+          gender: existing.gender,
+          dob: existing.dob,
+          email: existing.email
+        };
+      } else {
+        const newPatient = await Patient.create({
+          name: name.trim(),
+          gender,
+          phone,
+          email,
+          bloodGroup,
+          dob: normalizedDob,
+          age: calculateAge(normalizedDob)
+        });
+
+        patientRef = newPatient._id;
+        patientObj = {
+          name: newPatient.name,
+          phone: newPatient.phone,
+          gender: newPatient.gender,
+          dob: newPatient.dob,
+          email: newPatient.email,
+          bloodGroup: newPatient.bloodGroup
+        };
+      }
     }
 
     const appointment = await Appointment.create({
@@ -188,7 +176,7 @@ export const createAppointmentByAdmin = async (req, res) => {
       departmentId,
       date: selectedDate,
       timeSlot: timeSlot || null,
-      source: "walk-in",
+      source: source || "walk-in",
       notes
     });
 
@@ -199,15 +187,11 @@ export const createAppointmentByAdmin = async (req, res) => {
     });
 
   } catch (err) {
-  console.error("❌ ERROR MESSAGE:", err?.message);
-  console.error("❌ FULL ERROR:", err);
-  console.error("❌ STACK TRACE:", err?.stack);
-
-  return res.status(500).json({
-    success: false,
-    message: err?.message || "Failed to create appointment",
-  });
-}
+    return res.status(500).json({
+      success: false,
+      message: err?.message || "Failed to create appointment",
+    });
+  }
 };
 
 // ----------------------------TOKEN---------------------------------------------------
@@ -336,6 +320,45 @@ if (appointment.timeSlot?.startTime && appointment.timeSlot?.endTime) {
     });
   }
 };
+
+
+export const getOnlineBookings = async (req, res) => {
+  try {
+    const { date, doctorId } = req.query;
+
+    const start = new Date(date);
+    const end = new Date(date);
+    end.setDate(end.getDate() + 1);
+
+    const filter = {
+      source: "online",
+      date: { $gte: start, $lt: end },
+    };
+
+    if (doctorId) {
+      filter.doctorId = doctorId;
+    }
+
+    const appointments = await Appointment.find(filter)
+      .populate("patientId", "name gender phone")
+      .populate("departmentId", "name")
+      .populate("doctorId", "name specialization")
+      .sort({ createdAt: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: appointments.length,
+      appointments,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch online bookings",
+    });
+  }
+};
+
 
 // -----------skip- patient-------------------------------
 export const skipPatient = async (req, res) => {
@@ -513,31 +536,48 @@ export const fecthAllAppointments = async (req,res) => {
     }
 }
 // -----------------------------GET DOCTOR APPOINMENTS------------------------
+export const getDoctorAppointments = async (req, res) => {
+  try {
+    const { doctorId, date } = req.query;
 
-export const getDoctorAppointments = async ( req, res ) =>{
-  try{
-    const {doctorId} = req.body;
-    if(!doctorId) return res.status(400).json({success: false, message: "Doctor id is required"})
-    
-    const appointments = await Appointment.find({doctorId})
+    if (!doctorId || !mongoose.Types.ObjectId.isValid(doctorId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid doctorId is required",
+      });
+    }
+
+    let filter = {
+      doctorId: new mongoose.Types.ObjectId(doctorId),
+    };
+
+    if (date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    filter.date = { $gte: start, $lte: end };
+  }
+    const appointments = await Appointment.find(filter)
       .populate("patientId", "name phone gender")
       .populate("departmentId", "name")
-      .sort({date: 1});
+      .sort({ date: 1 });
 
-    if(!appointments) return res.status(400).json({message: "No appointments found"})
-
-      res.status(200).json({
-        success: true,
-        count: appointments.length,
-        appointments
-      })
-
-  }catch(err){
-    console.log("GET DOCTOR APPOINTMENTS ERROR",err);
-    res.status(500).json({success: false, message: "Failed to fetch doctor's appointments"});
+    res.status(200).json({
+      success: true,
+      count: appointments.length,
+      appointments,
+    });
+  } catch (err) {
+    console.log("GET DOCTOR APPOINTMENTS ERROR", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
-}
-
+};
 // -----------------------GET APPLICATION BY ID----------------------------
 
 export const getAppointmentById = async (req, res) => {
@@ -634,7 +674,7 @@ export const getPatientsByPhone = async (req, res) => {
 
     const patients = await Patient.find({
       phone: phone,
-    }).select("name phone dob gender email");
+    }).select("name phone dob age gender email");
 
     res.status(200).json({
       success: true,
@@ -662,24 +702,27 @@ export const addNewPatient = async (req, res)=>{
   }
 }
 
-
 // --------------MARK NO SHOW----------------------------------------
-
 export const markNoShowInternal = async () => {
   try {
+
+    
     const now = new Date();
+      
 
     const result = await Appointment.updateMany(
       {
         status: "scheduled",
-        date: { $lt: now }
+        queueStatus: { $in: ["in_consultation", "waiting"] }, 
+        date: { $lt: new Date().toISOString() },
       },
       {
-        status: "no-show"
+        status: "no_show",
+        queueStatus: "no_show",
       }
     );
 
-    console.log(`[CRON] No-show updated: ${result.modifiedCount}`);
+    // console.log(`[CRON] No-show updated: ${result.modifiedCount}`);
   } catch (err) {
     console.error("[CRON ERROR]:", err);
   }
@@ -704,27 +747,37 @@ export const getRemainingAppointments = async (req, res) => {
   });
 }
 };
+export const getCompletedAppointments = async (req, res) => {
+  try {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
-export const getCompletedAppointments = async(req,res)=>{
-  try{
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
 
     const appointments = await Appointment.find({
-      status: "completed"
+      status: "completed",
+      date: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
     })
-     .populate("doctorId", "name")       
-      .populate("departmentId", "name")  
-      .populate("patientId", "name phone") 
-      .sort({ date: 1 })                  
+      .populate("doctorId", "name")
+      .populate("departmentId", "name")
+      .populate("patientId", "name phone")
+      .sort({ date: 1 })
       .lean();
+
     res.status(200).json({
       success: true,
       appointments
     });
+
   } catch (err) {
-    console.error("GET REMAINING APPOINTMENTS ERROR:", err);
+    console.error("GET COMPLETED APPOINTMENTS ERROR:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch remaining appointments"
+      message: "Failed to fetch completed appointments"
     });
   }
 };

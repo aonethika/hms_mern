@@ -45,44 +45,41 @@ export const getMyPatients = async (req, res) => {
 
 
 // ----------------------GET TODAY APPOINTMNETS--------------------
-
-export const getTodayAppointments = async(req,res) => {
-  try{
+export const getAppointmentsByDateAndStatus = async (req, res) => {
+  try {
     const doctorId = req.user._id;
+    const { date, status } = req.query;
 
-    const start = new Date();
-    start.setHours(0,0,0,0);
+    let query = { doctorId, token: { $ne: null } };
 
-    const end = new Date();
-    end.setHours(23,59,59,999);
+    const filterDate = date ? new Date(date) : new Date();
+    const start = new Date(filterDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(filterDate);
+    end.setHours(23, 59, 59, 999);
 
-    const appointments = await Appointment.find({
-      date: { $gte: start, $lte: end },
-      doctorId,
-      token: { $ne: null }
-    })
+    query.date = { $gte: start, $lte: end };
+
+    if (status) {
+      query.status = status;
+    }
+
+    const appointments = await Appointment.find(query)
       .populate("patientId", "name phone gender")
       .populate("departmentId", "name")
-      .sort({ date: 1 });
-
-    if (appointments.length === 0) {
-      return res.status(200).json({
-        success: true,
-        appointments: []
-      });
-    }
+      .sort({ date: -1 });
 
     res.status(200).json({
       success: true,
-      message: "Today's appointment fetched successfully",
+      message: "Appointments fetched successfully",
       count: appointments.length,
-      appointments
-    })
-  }catch(err){
-    console.log('GET TODAY APPOINYTMET ERROR', err);
-    res.status(500).json({message: "Failed to fetch todays appointment"})
+      appointments,
+    });
+  } catch (err) {
+    console.log("GET APPOINTMENTS ERROR", err);
+    res.status(500).json({ message: "Failed to fetch appointments" });
   }
-}
+};
 
 // ---------------------TODAY QUEUE----------------------------------------
 export const getDoctorTodayQueue = async (req, res) => {
@@ -90,8 +87,10 @@ export const getDoctorTodayQueue = async (req, res) => {
     const doctorId = req.user._id;
     if (!doctorId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const start = new Date(); start.setHours(0, 0, 0, 0);
-    const end = new Date(); end.setHours(23, 59, 59, 999);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
     const now = new Date();
 
     const todayAppointments = await Appointment.find({
@@ -99,40 +98,55 @@ export const getDoctorTodayQueue = async (req, res) => {
       date: { $gte: start, $lte: end },
       status: "scheduled",
       token: { $ne: null }
-    }).sort({ tokenNumber: 1 });
+    })
+      .populate("patientId", "name phone gender")
+      .sort({ tokenNumber: 1 });
 
     let current = todayAppointments.find(appt => appt.queueStatus === "in_consultation");
 
-    const bookedReady = todayAppointments.filter(appt =>
-      appt.queueStatus === "waiting" &&
-      appt.tokenType === "booked" &&
+    const bookedWaiting = todayAppointments.filter(appt => appt.queueStatus === "waiting" && appt.tokenType === "booked");
+    const walkInWaiting = todayAppointments.filter(appt => appt.queueStatus === "waiting" && appt.tokenType !== "booked");
+
+    let bookedReady = bookedWaiting.filter(appt =>
       appt.timeSlot?.startTime &&
       now >= new Date(new Date(appt.date).setHours(...appt.timeSlot.startTime.split(":").map(Number)))
     );
 
-    if (!current && bookedReady.length > 0) {
-      current = bookedReady[0];
-      current.queueStatus = "in_consultation";
-      await current.save();
+    if (!current) {
+      if (walkInWaiting.length > 0) {
+        current = walkInWaiting[0];
+        current.queueStatus = "in_consultation";
+        await current.save();
+      } else if (bookedReady.length > 0) {
+        current = bookedReady[0];
+        current.queueStatus = "in_consultation";
+        await current.save();
+      } else if (bookedWaiting.length > 0) {
+        current = bookedWaiting[0]; // allow booked patient early if queue empty
+        current.queueStatus = "in_consultation";
+        await current.save();
+      }
     }
 
-    const waiting = todayAppointments.filter(appt =>
-      appt._id.toString() !== current?._id.toString() &&
-      appt.queueStatus === "waiting"
-    );
+    const waiting = [
+      ...walkInWaiting.filter(appt => appt._id.toString() !== current?._id.toString()),
+      ...bookedWaiting.filter(appt => appt._id.toString() !== current?._id.toString())
+    ];
 
-    let nextPatient = null;
-    if (bookedReady.length > 1) {
-      nextPatient = bookedReady.find(appt => appt._id.toString() !== current._id.toString());
-    } else if (waiting.length > 0) {
-      nextPatient = waiting[0];
-    }
+    let nextPatient = waiting.length > 0 ? waiting[0] : null;
+
+    const formatPatient = (appt) => {
+      if (!appt) return null;
+      const obj = appt.toObject();
+      obj.patient = obj.patientId;
+      return obj;
+    };
 
     return res.status(200).json({
       success: true,
-      inConsultation: current,
-      nextPatient,
-      waiting
+      inConsultation: formatPatient(current),
+      nextPatient: formatPatient(nextPatient),
+      waiting: waiting.map(formatPatient)
     });
 
   } catch (err) {
@@ -299,6 +313,8 @@ export const doctorMarkFollowUp = async (req, res) => {
     });
   }
 };
+
+
 export const createPrescription = async (req, res) => {
   try {
     const doctorId = req.user._id;
@@ -307,16 +323,30 @@ export const createPrescription = async (req, res) => {
 
     const doctor = await User.findById(doctorId);
 
-    if (!diagnosis || !medicines?.length)
-      return res.status(400).json({ success: false, message: "Diagnosis and medicines required" });
+    if (!diagnosis || !medicines?.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Diagnosis and medicines required"
+      });
+    }
 
     const appointment = await Appointment.findById(appointmentId);
-    if (!appointment || appointment.doctorId.toString() !== doctorId.toString())
-      return res.status(403).json({ success: false, message: "Unauthorized or appointment not found" });
+
+    if (!appointment || appointment.doctorId.toString() !== doctorId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized or appointment not found"
+      });
+    }
 
     const existingPrescription = await Prescription.findOne({ appointmentId });
-    if (existingPrescription)
-      return res.status(400).json({ success: false, message: "Prescription already exists" });
+
+    if (existingPrescription) {
+      return res.status(400).json({
+        success: false,
+        message: "Prescription already exists"
+      });
+    }
 
     const patient = await Patient.findById(appointment.patientId);
 
@@ -337,8 +367,12 @@ export const createPrescription = async (req, res) => {
     appointment.prescriptionId = prescription._id;
     await appointment.save();
 
-    const start = new Date(); start.setHours(0, 0, 0, 0);
-    const end = new Date(); end.setHours(23, 59, 59, 999);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
     const now = new Date();
 
     const waitingRaw = await Appointment.find({
@@ -349,18 +383,28 @@ export const createPrescription = async (req, res) => {
       token: { $ne: null }
     }).sort({ tokenNumber: 1 });
 
-    let bookedReady = waitingRaw.filter(appt =>
-      appt.tokenType === "booked" &&
+  
+
+    const bookedWaiting = waitingRaw.filter(appt => appt.tokenType === "booked");
+    const walkInWaiting = waitingRaw.filter(appt => appt.tokenType !== "booked");
+
+    const bookedReady = bookedWaiting.filter(appt =>
       appt.timeSlot?.startTime &&
-      now >= new Date(new Date(appt.date).setHours(...appt.timeSlot.startTime.split(":").map(Number)))
+      now >= new Date(
+        new Date(appt.date).setHours(
+          ...appt.timeSlot.startTime.split(":").map(Number)
+        )
+      )
     );
 
     let nextPatient = null;
+
     if (bookedReady.length > 0) {
       nextPatient = bookedReady[0];
-    } else if (waitingRaw.length > 0) {
-      nextPatient = waitingRaw[0];
+    } else if (walkInWaiting.length > 0) {
+      nextPatient = walkInWaiting[0];
     }
+
 
     if (nextPatient) {
       nextPatient.queueStatus = "in_consultation";
@@ -376,34 +420,36 @@ export const createPrescription = async (req, res) => {
         departmentId: appointment.departmentId,
         date: followUpDate,
         status: "scheduled",
-        isFollowUp: true,
+        followUpRequired: true,
         parentAppointmentId: appointment._id
       });
 
       await Notification.create({
-      message: `You have a follow-up on ${followUpDate} with Dr.${doctor.name}`,
-      receiver: patient.userId ,
-      receiverRole: "patient",
-      appointmentId: appointment._id,
-      prescriptionId: prescription._id,
-      type: "prescription",
-  })
+        message: `You have a follow-up on ${followUpDate} with Dr.${doctor.name}`,
+        receiver: patient.userId,
+        receiverRole: "patient",
+        appointmentId: appointment._id,
+        prescriptionId: prescription._id,
+        type: "prescription",
+      });
     }
 
+    if (patient.userId) {
+      await Notification.create({
+        message: "Click here to see your prescription",
+        receiver: patient.userId,
+        receiverRole: "patient",
+        appointmentId: appointment._id,
+        prescriptionId: prescription._id,
+        type: "prescription",
+      });
+    }
 
-if(patient.userId){
-  await Notification.create({
-      message: "Click here to see your prescription",
-      receiver: patient.userId ,
-      receiverRole: "patient",
-      appointmentId: appointment._id,
-      prescriptionId: prescription._id,
-      type: "prescription",
-  })
-}
-    
+    return res.status(201).json({
+      success: true,
+      prescription
+    });
 
-    return res.status(201).json({ success: true, prescription });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false });
@@ -411,13 +457,64 @@ if(patient.userId){
 };
 
 
+export const getMyProfileDoctor = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const doctor = await User.findOne({ _id: doctorId, role: "doctor" })
+      .select("-password")
+      .populate("departmentId", "name");
+
+    if (!doctor) return res.status(404).json({ success: false, message: "Doctor not found" });
+
+    res.status(200).json({ success: true, doctor });
+  } catch (err) {
+    console.error("GET MY PROFILE ERROR:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch profile" });
+  }
+};
+
+// -------------------------UPDATE PROFILE----------------------------
+
+export const updateDoctorSelf = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const updateData = req.body;
+
+    if (updateData.workingHours) {
+      const { startTime, endTime } = updateData.workingHours;
+      if (startTime && endTime && startTime >= endTime) {
+        return res.status(400).json({ success: false, message: "Start time must be before end time" });
+      }
+    }
+
+    const doctor = await User.findOneAndUpdate(
+      { _id: doctorId, role: "doctor" },
+      updateData,
+      { new: true, runValidators: true }
+    ).populate("departmentId", "name").select("-password");
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: "Doctor not found" });
+    }
+
+    res.status(200).json({ success: true, doctor });
+  } catch (err) {
+    console.error("UPDATE DOCTOR PROFILE ERROR:", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 
 
 export const skipCurrentPatientByDoctor = async (req, res) => {
   try {
     const doctorId = req.user._id;
-    const start = new Date(); start.setHours(0, 0, 0, 0);
-    const end = new Date(); end.setHours(23, 59, 59, 999);
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
     const now = new Date();
 
     const current = await Appointment.findOne({
@@ -426,7 +523,13 @@ export const skipCurrentPatientByDoctor = async (req, res) => {
       status: "scheduled",
       queueStatus: "in_consultation"
     });
-    if (!current) return res.status(404).json({ success: false, message: "No active patient to skip" });
+
+    if (!current) {
+      return res.status(404).json({
+        success: false,
+        message: "No active patient to skip"
+      });
+    }
 
     current.status = "no_show";
     current.queueStatus = "no_show";
@@ -440,17 +543,26 @@ export const skipCurrentPatientByDoctor = async (req, res) => {
       token: { $ne: null }
     }).sort({ tokenNumber: 1 });
 
-    let bookedReady = waitingRaw.filter(appt =>
-      appt.tokenType === "booked" &&
+    // 🔥 Split properly
+    const bookedWaiting = waitingRaw.filter(appt => appt.tokenType === "booked");
+    const walkInWaiting = waitingRaw.filter(appt => appt.tokenType !== "booked");
+
+    // 🔥 Only allow booked when time reached
+    const bookedReady = bookedWaiting.filter(appt =>
       appt.timeSlot?.startTime &&
-      now >= new Date(new Date(appt.date).setHours(...appt.timeSlot.startTime.split(":").map(Number)))
+      now >= new Date(
+        new Date(appt.date).setHours(
+          ...appt.timeSlot.startTime.split(":").map(Number)
+        )
+      )
     );
 
     let nextPatient = null;
+
     if (bookedReady.length > 0) {
       nextPatient = bookedReady[0];
-    } else if (waitingRaw.length > 0) {
-      nextPatient = waitingRaw[0];
+    } else if (walkInWaiting.length > 0) {
+      nextPatient = walkInWaiting[0];
     }
 
     if (nextPatient) {
@@ -459,7 +571,11 @@ export const skipCurrentPatientByDoctor = async (req, res) => {
       await nextPatient.save();
     }
 
-    return res.status(200).json({ success: true, message: "Current patient skipped" });
+    return res.status(200).json({
+      success: true,
+      message: "Current patient skipped"
+    });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false });
@@ -472,7 +588,7 @@ export const getPrescriptionById = async (req, res) => {
     const { prescriptionId } = req.params;
 
     const prescription = await Prescription.findById(prescriptionId)
-      .populate("patientId", "name phone gender")
+      .populate("patientId", "name phone dob gender")
       .populate("doctorId", "name");
 
     if (!prescription) {
@@ -500,6 +616,7 @@ export const getPatientMedicalHistory = async (req, res) => {
     })
       .populate("appointmentId", "date")
       .populate("doctorId", "name specialization")
+      .populate("patientId", "name age gender phone")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -873,7 +990,7 @@ export const cancelLeave = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Leave cancelled",
+      message: "Leave cancelled successfully",
     });
   } catch (err) {
     console.error("CANCEL LEAVE ERROR:", err);
@@ -916,8 +1033,11 @@ export const getNotificationsDoctor = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
+       const unreadCount = notifications.filter(n => !n.isRead).length;
+
     res.status(200).json({
       success: true,
+      count: unreadCount,
       notifications
     });
   } catch (err) {
