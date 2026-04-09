@@ -5,7 +5,6 @@ import crypto from "crypto";
 import {sendEmailAccountCreated, sendEmailAppointmentAffectedByDoctorLeave } from "../utils/senEmail.js";
 import { sendSMS } from "../utils/sendSMS.js";
 import Leave from "../models/Leave.js";
-import { flushCompileCache } from "module";
 import Appointment from "../models/Appointment.js";
 import Patient from "../models/Patient.js";
 import mongoose from "mongoose";
