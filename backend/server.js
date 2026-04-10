@@ -16,7 +16,10 @@ import { startCronJobs } from "./cron/cronJobs.js";
 dotenv.config();
 
 const app = express();
-app.use(cors())
+app.use(cors({
+  origin: "http://13.206.89.129",
+  credentials: true
+}));
 app.use(express.json());
 
 
