@@ -184,8 +184,8 @@ export default function DoctorsByDatePage() {
 
         {/* Appointment Modal */}
         {open && selectedPatient && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 p-6 rounded-2xl w-full max-w-lg border border-gray-800 space-y-4">
+         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 p-6 rounded-2xl w-full max-w-lg border border-gray-800 space-y-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
 
               <h2 className="text-xl font-semibold text-cyan-400">
                 Confirm Appointment
