@@ -2,7 +2,7 @@ import axios from "axios";
 import { LoginResponse } from "../types/auth";
 
 // ----------------- BASE URL -----------------
-const BASE_URL = "http://13.206.89.129:5000/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // ----------------- PUBLIC REQUEST -----------------
 export const publicRequest = axios.create({

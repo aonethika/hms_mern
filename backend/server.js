@@ -17,7 +17,7 @@ dotenv.config();
 
 const app = express();
 app.use(cors({
-  origin: "http://13.206.89.129",
+  origin: ["http://13.206.89.129:3000", "http://13.206.89.129"],
   credentials: true
 }));
 app.use(express.json());
@@ -55,9 +55,9 @@ const startServer = async () => {
     await connectDB();
     startCronJobs();
     startAppointmentReminder();
-    app.listen(5000, () =>
-      console.log("Server running on port 5000 🚀")
-    );
+    app.listen(5000, "0.0.0.0", () => {
+  console.log("Server running on port 5000 🚀");
+});
   } catch (error) {
     console.error("Server failed to start:", error);
   }
