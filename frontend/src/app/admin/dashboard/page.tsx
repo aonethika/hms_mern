@@ -42,7 +42,7 @@ export default function Page() {
 
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-6xl py-10">
     <div
-      className="bg-gradient-to-br from-cyan-800 to-cyan-900 shadow-xl rounded-2xl p-6 flex flex-col items-center justify-center hover:scale-105 transform transition"
+      className="bg-gradient-to-br from-cyan-700 to-cyan-900 shadow-xl rounded-2xl p-6 flex flex-col items-center justify-center hover:scale-105 transform transition"
       onClick={() => router.push("/admin/appointments")}
     >
       <div className="text-gray-300 text-lg font-medium">
@@ -66,7 +66,7 @@ export default function Page() {
     </div>
 
     <div
-      className="bg-gradient-to-br from-cyan-800 to-cyan-900 shadow-xl rounded-2xl p-6 flex flex-col items-center justify-center hover:scale-105 transform transition"
+      className="bg-gradient-to-br from-cyan-700 to-cyan-900 shadow-xl rounded-2xl p-6 flex flex-col items-center justify-center hover:scale-105 transform transition"
       onClick={() => router.push("/admin/completed")}
     >
       <div className="text-gray-300 text-lg font-medium">

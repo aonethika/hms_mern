@@ -183,83 +183,86 @@ export default function DoctorsByDatePage() {
         </div>
 
         {/* Appointment Modal */}
-        {open && selectedPatient && (
-         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 p-6 rounded-2xl w-full max-w-lg border border-gray-800 space-y-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
+        {/* Appointment Modal */}
+{open && selectedPatient && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3 sm:p-4">
+    <div className="bg-gray-900 rounded-2xl w-full max-w-lg border border-gray-800 flex flex-col max-h-[92vh] sm:max-h-[90vh]">
 
-              <h2 className="text-xl font-semibold text-cyan-400">
-                Confirm Appointment
-              </h2>
+      <div className="p-4 sm:p-5 border-b border-gray-800">
+        <h2 className="text-lg sm:text-xl font-semibold text-cyan-400">
+          Confirm Appointment
+        </h2>
+      </div>
 
-              {/* Patient Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                {Object.entries(form).map(([key, value]) => (
-                  <div key={key}>
-                    <label className="text-gray-400 capitalize">{key}</label>
-                    <input
-                      value={value}
-                      readOnly
-                      className="w-full bg-gray-800 p-2 rounded mt-1"
-                    />
-                  </div>
-                ))}
-              </div>
+      <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
 
-              {/* Appointment Info */}
-              <div className="text-sm text-gray-400">
-                <p>Date: {date}</p>
-                <p>Doctor: {selectedDoctor?.doctorName}</p>
-              </div>
-
-              {/* Slots Selection */}
-              <div>
-                <p className="text-gray-400 mb-2">Select Slot</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {slots.map((slot, i) => {
-                    const time = slot?.time || "";
-                    const isFull = slot?.bookings >= 3;
-
-                    return (
-                      <button
-                        key={time + i}
-                        disabled={isFull}
-                        onClick={() => setSelectedSlot(time)}
-                        className={`px-2 py-1 rounded-lg text-sm w-full sm:w-auto ${
-                          selectedSlot === time
-                            ? "bg-cyan-500 text-black"
-                            : isFull
-                            ? "bg-gray-800 opacity-50 cursor-not-allowed"
-                            : "bg-gray-800"
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-4">
-                <button
-                  onClick={() => setOpen(false)}
-                  className="px-4 py-2 bg-gray-800 rounded-lg"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleBook}
-                  disabled={booking || !selectedSlot}
-                  className="px-4 py-2 bg-cyan-500 text-black rounded-lg"
-                >
-                  {booking ? "Booking..." : "Confirm"}
-                </button>
-              </div>
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
+          {Object.entries(form).map(([key, value]) => (
+            <div key={key}>
+              <label className="text-gray-400 capitalize">{key}</label>
+              <input
+                value={value}
+                readOnly
+                className="w-full bg-gray-800 p-2 rounded mt-1 text-sm"
+              />
             </div>
+          ))}
+        </div>
+
+        <div className="text-sm text-gray-400 space-y-1">
+          <p>Date: {date}</p>
+          <p>Doctor: {selectedDoctor?.doctorName}</p>
+        </div>
+
+        <div>
+          <p className="text-gray-400 mb-2 text-sm">Select Slot</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {slots.map((slot, i) => {
+              const time = slot?.time || "";
+              const isFull = slot?.bookings >= 3;
+
+              return (
+                <button
+                  key={time + i}
+                  disabled={isFull}
+                  onClick={() => setSelectedSlot(time)}
+                  className={`px-2 py-2 rounded-lg text-sm w-full transition ${
+                    selectedSlot === time
+                      ? "bg-cyan-500 text-black"
+                      : isFull
+                      ? "bg-gray-800 opacity-50 cursor-not-allowed"
+                      : "bg-gray-800"
+                  }`}
+                >
+                  {time}
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
+
+      </div>
+
+      <div className="p-4 sm:p-5 border-t border-gray-800 flex flex-col sm:flex-row gap-3 sm:justify-end bg-gray-900">
+        <button
+          onClick={() => setOpen(false)}
+          className="px-4 py-2 bg-gray-800 rounded-lg w-full sm:w-auto"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleBook}
+          disabled={booking || !selectedSlot}
+          className="px-4 py-2 bg-cyan-500 text-black rounded-lg disabled:opacity-50 w-full sm:w-auto"
+        >
+          {booking ? "Booking..." : "Confirm"}
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
 
       </div>
     </div>
