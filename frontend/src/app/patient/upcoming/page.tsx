@@ -68,25 +68,39 @@ export default function UpcomingAppointmentsPage() {
   };
 
   const handleReschedule = async () => {
-    if (!newDate || !selectedSlot) return;
-    if (selectedSlot.bookings >= 3) return;
-   let startTime = selectedSlot.startTime;
-   let endTime = selectedSlot.endTime;
+  if (!newDate || !selectedSlot) return;
 
-    if (selectedSlot.time) {
-      const parts = selectedSlot.time.split("-");
-      startTime = parts[0]?.trim();
-      endTime = parts[1]?.trim();
-    }
+  let startTime = selectedSlot.startTime;
+  let endTime = selectedSlot.endTime;
 
-    console.log("RESCHEDULE PAYLOAD:", {
-      newDate,
-      timeSlot: { startTime, endTime }
-    });
-    await rescheduleAppointment(rescheduleModal._id, { newDate, timeSlot: { startTime, endTime } });
-    setRescheduleModal(null);
-    fetchAppointments();
-  };
+  // fallback parsing ONLY if needed
+  if ((!startTime || !endTime) && selectedSlot.time) {
+    const parts = selectedSlot.time.split("-");
+    startTime = parts[0]?.trim();
+    endTime = parts[1]?.trim();
+  }
+
+  console.log("DEBUG SLOT:", {
+    selectedSlot,
+    startTime,
+    endTime
+  });
+
+  if (!startTime || !endTime) {
+    alert("Invalid time slot");
+    return;
+  }
+
+  console.log("APPOINTMENT ID:", rescheduleModal?._id);
+
+  await rescheduleAppointment(rescheduleModal._id, {
+    newDate,
+    timeSlot: { startTime, endTime }
+  });
+
+  setRescheduleModal(null);
+  fetchAppointments();
+};
 
   const today = new Date().toISOString().split("T")[0];
 
