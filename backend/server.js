@@ -18,29 +18,23 @@ dotenv.config();
 
 const app = express();
 
-const corsOptions = {
+
+const allowed = [
+  "http://13.206.89.129",
+  "http://13.206.89.129:3000",
+  "http://localhost:3000"
+];
+
+app.use(cors({
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      "http://13.206.89.129",
-      "http://13.206.89.129:3000",
-      "http://localhost:3000"
-    ];
-
     if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(null, true);
-    }
+    if (allowed.includes(origin)) return callback(null, true);
+    return callback(null, true);
   },
+  credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
-};
-
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
