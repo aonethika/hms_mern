@@ -1,10 +1,10 @@
 "use client";
 
-import { userLogin } from '@/app/shared/api/auth.api';
 import useAuthStore from '@/app/shared/store/auth.store';
 import { LoginResponse } from '@/app/shared/types/auth';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
+import { userLogin } from '@/app/shared/api/auth.api';
 
 export default function LoginPage() {
 
@@ -35,19 +35,29 @@ export default function LoginPage() {
             }, 50);
 
         } catch (err: any) {
-            console.log("Login error", err.response?.data, err.message);
             setError(err.response?.data?.message || "Login Failed");
         }
     }
 
+    const demoAccounts = {
+        admin: { email: "admin@hospital.com", password: "1234" },
+        doctor: { email: "doctor1@hospital.com", password: "1234" },
+        patient: { email: "patient1@hospital.com", password: "1234" },
+    };
+
+    const fillDemo = (roleType: "admin" | "doctor" | "patient") => {
+        setRole(roleType);
+        setFormData(demoAccounts[roleType]);
+    };
+
     return (
         <div className="w-full h-screen bg-gray-950 flex items-center justify-center p-4">
             <div className="bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md">
+
                 <h2 className="text-2xl font-bold text-white text-center mb-6">
                     {role.charAt(0).toUpperCase() + role.slice(1)} Login
                 </h2>
 
-                {/* Role Buttons */}
                 <div className="flex justify-center gap-3 mb-6">
                     {["patient", "doctor", "admin"].map(r => (
                         <button
@@ -65,7 +75,6 @@ export default function LoginPage() {
                     ))}
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleLogin} className="flex flex-col gap-4">
                     <input
                         name="email"
@@ -96,7 +105,35 @@ export default function LoginPage() {
                     <p className="text-red-500 text-center mt-4">{error}</p>
                 )}
 
-                {/* Signup Link */}
+                <div className="mt-6 border-t border-gray-700 pt-4">
+                    <p className="text-gray-400 text-sm text-center mb-3">
+                        Demo Accounts (Click to Autofill)
+                    </p>
+
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={() => fillDemo("admin")}
+                            className="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md text-sm"
+                        >
+                            Admin Login
+                        </button>
+
+                        <button
+                            onClick={() => fillDemo("doctor")}
+                            className="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md text-sm"
+                        >
+                            Doctor Login
+                        </button>
+
+                        <button
+                            onClick={() => fillDemo("patient")}
+                            className="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md text-sm"
+                        >
+                            Patient Login
+                        </button>
+                    </div>
+                </div>
+
                 <p className="text-gray-400 text-center mt-4">
                     Don't have an account?{" "}
                     <span
