@@ -25,6 +25,9 @@ export default function AppointmentsPage() {
       setLoading(false);
     };
 
+    console.log("data", data);
+    
+
     if (selectedPatient?._id) fetchAppointments();
   }, [selectedPatient]);
 

@@ -4,6 +4,10 @@ import { LoginResponse } from "../types/auth";
 // ----------------- BASE URL -----------------
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
+if (!BASE_URL) {
+  throw new Error("NEXT_PUBLIC_API_URL is not defined in environment variables");
+}
+
 // ----------------- PUBLIC REQUEST -----------------
 export const publicRequest = axios.create({
   baseURL: BASE_URL,
