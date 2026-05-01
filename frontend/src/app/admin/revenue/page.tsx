@@ -30,14 +30,12 @@ type RevenueData = {
   totalMedicines?: number;
   totalDoctorFee?: number;
   chart?: ChartItem[];
-data?: ChartItem[];
 };
 
+// ---------------- COMPONENT ----------------
 export default function RevenuePage() {
-  // ---------------- VIEW ----------------
   const [view, setView] = useState<"daily" | "monthly" | "yearly">("daily");
 
-  // ---------------- FILTERS ----------------
   const [date, setDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -45,20 +43,25 @@ export default function RevenuePage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
 
-  // ---------------- DATA ----------------
   const [daily, setDaily] = useState<RevenueData>({});
   const [monthly, setMonthly] = useState<RevenueData>({});
   const [yearly, setYearly] = useState<RevenueData>({});
+
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // ---------------- SAFE CHARTS ----------------
   const monthlyChart: ChartItem[] = Array.isArray(monthly?.chart)
     ? monthly.chart
     : [];
 
-
-  const yearlyData = yearly?.chart || [];
-
+  const yearlyChart: ChartItem[] = Array.isArray(yearly?.chart)
+    ? yearly.chart
+    : [];
 
   // ---------------- FETCH ----------------
   const fetchData = async () => {
@@ -75,11 +78,10 @@ export default function RevenuePage() {
         setMonthly(res?.data || {});
       }
 
-    if (view === "yearly") {
-    const res = await getYearlyRevenueApi(year);
-
-    setYearly(res?.data || {});
-    }
+      if (view === "yearly") {
+        const res = await getYearlyRevenueApi(year);
+        setYearly(res || {});
+      }
     } finally {
       setLoading(false);
     }
@@ -99,7 +101,6 @@ export default function RevenuePage() {
     </div>
   );
 
-  // ---------------- LOADING ----------------
   if (loading) {
     return (
       <div className="p-6 bg-gray-950 text-white min-h-screen">
@@ -189,24 +190,24 @@ export default function RevenuePage() {
             />
           </div>
 
-          {/* TOTALS */}
           <div className="grid grid-cols-3 gap-4 mb-4">
             <Card title="Total Revenue" value={monthly?.totalRevenue} />
             <Card title="Medicine Revenue" value={monthly?.totalMedicines} />
             <Card title="Doctor Fee" value={monthly?.totalDoctorFee} />
           </div>
 
-          {/* CHART */}
-          <div className="h-[250px] bg-gray-900 p-4 rounded-xl">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyChart}>
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="revenue" fill="#22d3ee" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {mounted && monthlyChart.length > 0 && (
+            <div className="w-full h-[300px] bg-gray-900 p-4 rounded-xl">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyChart}>
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="revenue" fill="#22d3ee" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       )}
 
@@ -222,25 +223,26 @@ export default function RevenuePage() {
             className="bg-black border border-gray-700 px-3 py-2 rounded w-28 mb-4"
           />
 
-          {/* TOTALS */}
-          <Card title="Total Revenue" value={yearly?.totalRevenue} />
-        <Card title="Medicine Revenue" value={yearly?.totalMedicines} />
-        <Card title="Doctor Fee" value={yearly?.totalDoctorFee} />
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <Card title="Total Revenue" value={yearly?.totalRevenue} />
+            <Card title="Medicine Revenue" value={yearly?.totalMedicines} />
+            <Card title="Doctor Fee" value={yearly?.totalDoctorFee} />
+          </div>
 
-          {/* CHART */}
-          <div className="h-[250px] bg-gray-900 p-4 rounded-xl">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={yearlyData}>
+          {mounted && yearlyChart.length > 0 && (
+            <div className="w-full h-[300px] bg-gray-900 p-4 rounded-xl">
+            <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={yearlyChart}>
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
                 <Bar dataKey="revenue" fill="#22d3ee" />
-              </BarChart>
+                </BarChart>
             </ResponsiveContainer>
-          </div>
+            </div>
+          )}
         </div>
       )}
-
     </div>
   );
 }
