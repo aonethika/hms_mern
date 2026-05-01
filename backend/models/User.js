@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
 
     phone: { type: String, required: true },
 
-    role: { type: String, enum: ["patient", "doctor", "admin"], default: "patient" },
+    role: { type: String, enum: ["patient", "doctor", "admin", "pharmacist"], default: "patient" },
 
     dob: { type: Date },
 

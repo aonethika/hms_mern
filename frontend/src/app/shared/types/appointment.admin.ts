@@ -17,6 +17,7 @@ export interface AdminAppointment{
         specialization: string;
         qualifications: string[];
     };
+    caseType: "normal" | "emergency" | "insurance";
     departmentId:{
         id: string;
         name: string;

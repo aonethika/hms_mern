@@ -7,7 +7,7 @@ import useAuthStore from "../shared/store/auth.store";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  allowedRole: "admin" | "patient" | "doctor";
+  allowedRole: "admin" | "patient" | "doctor" | "pharmacist";
 }
 export default function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
   const router = useRouter();

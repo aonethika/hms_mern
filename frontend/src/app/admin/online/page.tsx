@@ -5,6 +5,7 @@ import {
   getOnlineBookingsApi,
   generateTokenApi,
 } from "@/app/shared/api/appointments.api";
+import VitalsModal from "../components/VitalsModal";
 
 const getToday = () => {
   const d = new Date();
@@ -23,6 +24,10 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  const [showVitals, setShowVitals] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+  const [selectedVitals, setSelectedVitals] = useState<any>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -71,6 +76,12 @@ export default function Page() {
     });
   }, [appointments, search]);
 
+  const openVitals = (appointmentId: string, vitals: any) => {
+    setSelectedAppointmentId(appointmentId);
+    setSelectedVitals(vitals || null);
+    setShowVitals(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200 p-4">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-6">
@@ -101,45 +112,65 @@ export default function Page() {
           {filteredAppointments.map((appt: any) => (
             <div
               key={appt._id}
-              className="bg-gray-900 border border-gray-800 rounded-lg p-3 flex justify-between items-center"
+              className="bg-gray-900 border border-gray-800 rounded-lg p-3 space-y-2"
             >
-              <div>
-                <p className="text-sm font-medium text-white">
-                  {appt.patient?.name || appt.patientId?.name}
-                </p>
-                <p className="text-xs text-gray-400">
-                  {appt.patient?.phone || appt.patientId?.phone}
-                </p>
-                <p className="text-xs text-cyan-400">
-                  Dr.{appt.doctorId?.name}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {appt.departmentId?.name}
-                </p>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    {appt.patient?.name || appt.patientId?.name}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {appt.patient?.phone || appt.patientId?.phone}
+                  </p>
+                  <p className="text-xs text-cyan-400">
+                    Dr.{appt.doctorId?.name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {appt.departmentId?.name}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-white">
+                    {appt.token || "-"}
+                  </p>
+
+                  {isToday(selectedDate) &&
+                    !appt.token &&
+                    !appt.tokenGeneratedAt && (
+                      <button
+                        onClick={() => handleGenerateToken(appt._id)}
+                        disabled={generatingId === appt._id}
+                        className="text-[10px] px-2 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-white disabled:opacity-50 mt-1"
+                      >
+                        {generatingId === appt._id
+                          ? "Generating..."
+                          : "Generate Token"}
+                      </button>
+                    )}
+                </div>
               </div>
 
-              <div className="flex flex-col items-end gap-1">
-                <p className="text-sm font-semibold text-white">
-                  {appt.token || "-"}
-                </p>
-
-                {isToday(selectedDate) &&
-                  !appt.token &&
-                  !appt.tokenGeneratedAt && (
-                    <button
-                      onClick={() => handleGenerateToken(appt._id)}
-                      disabled={generatingId === appt._id}
-                      className="text-[10px] px-2 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-white disabled:opacity-50"
-                    >
-                      {generatingId === appt._id
-                        ? "Generating..."
-                        : "Generate Token"}
-                    </button>
-                  )}
-              </div>
+              {isToday(selectedDate) && (
+                <button
+                  onClick={() => openVitals(appt._id, appt.vitals)}
+                  className="bg-cyan-500 hover:bg-cyan-600 text-xs px-3 py-1 rounded w-full"
+                >
+                  {appt.vitals ? "Edit Vitals" : "Add Vitals"}
+                </button>
+              )}
             </div>
           ))}
         </div>
+      )}
+
+      {showVitals && (
+        <VitalsModal
+          appointmentId={selectedAppointmentId}
+          vitals={selectedVitals}
+          onClose={() => setShowVitals(false)}
+          onSaved={fetchData}
+        />
       )}
     </div>
   );

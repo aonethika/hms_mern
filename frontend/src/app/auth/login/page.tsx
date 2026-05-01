@@ -1,149 +1,152 @@
 "use client";
 
-import useAuthStore from '@/app/shared/store/auth.store';
-import { LoginResponse } from '@/app/shared/types/auth';
-import { useRouter } from 'next/navigation';
-import React, { useState } from 'react';
-import { userLogin } from '@/app/shared/api/auth.api';
+import useAuthStore from "@/app/shared/store/auth.store";
+import { LoginResponse } from "@/app/shared/types/auth";
+import { useRouter } from "next/navigation";
+import React, { useState } from "react";
+import { userLogin } from "@/app/shared/api/auth.api";
+
+type Role = "patient" | "doctor" | "admin" | "pharmacist";
 
 export default function LoginPage() {
+  const login = useAuthStore((state) => state.login);
+  const router = useRouter();
 
-    const login = useAuthStore((state) => state.login);
-    const router = useRouter();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
-    const [formData, setFormData] = useState({ email: "", password: "" });
-    const [role, setRole] = useState<"patient" | "admin" | "doctor">("patient");
-    const [error, setError] = useState("");
+  const [role, setRole] = useState<Role>("patient");
+  const [error, setError] = useState("");
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      const res: LoginResponse = await userLogin({
+        ...formData,
+        role,
+      });
+
+      login(res);
+      localStorage.setItem("token", res.token);
+
+      if (res.user.role === "admin") router.push("/admin/dashboard");
+      else if (res.user.role === "doctor") router.push("/doctor/dashboard");
+      else if (res.user.role === "pharmacist") router.push("/pharmacy/dashboard");
+      else router.push("/patient/dashboard");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Login Failed");
     }
+  };
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError("");
+  const demoAccounts: Record<Role, { email: string; password: string }> = {
+    admin: { email: "admin@hospital.com", password: "1234" },
+    doctor: { email: "doctor1@hospital.com", password: "1234" },
+    patient: { email: "patient1@hospital.com", password: "1234" },
+    pharmacist: { email: "pharma@hms.com", password: "123456" },
+  };
 
-        try {
-            const res: LoginResponse = await userLogin({ ...formData, role });
-            login(res);
-            localStorage.setItem("token", res.token);
+  const fillDemo = (r: Role) => {
+    setRole(r);
+    setFormData(demoAccounts[r]);
+  };
 
-            setTimeout(() => {
-                if (res.user.role === "admin") router.push("/admin/dashboard");
-                else if (res.user.role === "doctor") router.push("/doctor/dashboard");
-                else router.push("/patient/dashboard");
-            }, 50);
+  return (
+    <div className="w-full h-screen bg-gray-950 flex items-center justify-center p-4">
+      <div className="bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md">
 
-        } catch (err: any) {
-            setError(err.response?.data?.message || "Login Failed");
-        }
-    }
+        <h2 className="text-2xl font-bold text-white text-center mb-6">
+          {role.charAt(0).toUpperCase() + role.slice(1)} Login
+        </h2>
 
-    const demoAccounts = {
-        admin: { email: "admin@hospital.com", password: "1234" },
-        doctor: { email: "doctor1@hospital.com", password: "1234" },
-        patient: { email: "patient1@hospital.com", password: "1234" },
-    };
+        {/* ROLE SELECT */}
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as Role)}
+          className="w-full px-4 py-2 mb-4 rounded-md bg-gray-700 text-white border border-gray-600"
+        >
+          <option value="patient">Patient</option>
+          <option value="doctor">Doctor</option>
+          <option value="admin">Admin</option>
+          <option value="pharmacist">Pharmacist</option>
+        </select>
 
-    const fillDemo = (roleType: "admin" | "doctor" | "patient") => {
-        setRole(roleType);
-        setFormData(demoAccounts[roleType]);
-    };
+        {/* FORM */}
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+          <input
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="Email"
+            required
+            className="px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600"
+          />
 
-    return (
-        <div className="w-full h-screen bg-gray-950 flex items-center justify-center p-4">
-            <div className="bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md">
+          <input
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Password"
+            required
+            className="px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600"
+          />
 
-                <h2 className="text-2xl font-bold text-white text-center mb-6">
-                    {role.charAt(0).toUpperCase() + role.slice(1)} Login
-                </h2>
+          <button
+            type="submit"
+            className="bg-cyan-600 text-white py-2 rounded-md font-semibold hover:bg-cyan-700 transition"
+          >
+            Login
+          </button>
+        </form>
 
-                <div className="flex justify-center gap-3 mb-6">
-                    {["patient", "doctor", "admin"].map(r => (
-                        <button
-                            key={r}
-                            type="button"
-                            onClick={() => setRole(r as any)}
-                            className={`px-4 py-2 rounded-md font-medium transition ${
-                                role === r
-                                    ? "bg-cyan-600 text-white"
-                                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                            }`}
-                        >
-                            {r.charAt(0).toUpperCase() + r.slice(1)}
-                        </button>
-                    ))}
-                </div>
+        {/* ERROR */}
+        {error && (
+          <p className="text-red-500 text-center mt-4">{error}</p>
+        )}
 
-                <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                    <input
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="Email"
-                        required
-                        className="px-4 py-2 rounded-md border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                    <input
-                        name="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        placeholder="Password"
-                        required
-                        className="px-4 py-2 rounded-md border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                    <button
-                        type="submit"
-                        className="bg-cyan-600 text-white py-2 rounded-md font-semibold hover:bg-cyan-700 transition"
-                    >
-                        Login
-                    </button>
-                </form>
+        {/* DEMO */}
+        <div className="mt-6 border-t border-gray-700 pt-4">
+          <p className="text-gray-400 text-sm text-center mb-3">
+            Demo Accounts
+          </p>
 
-                {error && (
-                    <p className="text-red-500 text-center mt-4">{error}</p>
-                )}
-
-                <div className="mt-6 border-t border-gray-700 pt-4">
-                    <p className="text-gray-400 text-sm text-center mb-3">
-                        Demo Accounts (Click to Autofill)
-                    </p>
-
-                    <div className="flex flex-col gap-2">
-                        <button
-                            onClick={() => fillDemo("admin")}
-                            className="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md text-sm"
-                        >
-                            Admin Login
-                        </button>
-
-                        <button
-                            onClick={() => fillDemo("doctor")}
-                            className="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md text-sm"
-                        >
-                            Doctor Login
-                        </button>
-
-                        <button
-                            onClick={() => fillDemo("patient")}
-                            className="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md text-sm"
-                        >
-                            Patient Login
-                        </button>
-                    </div>
-                </div>
-
-                <p className="text-gray-400 text-center mt-4">
-                    Don't have an account?{" "}
-                    <span
-                        className="text-cyan-400 cursor-pointer hover:underline"
-                        onClick={() => router.push("/auth/register")}
-                    >
-                        Sign Up
-                    </span>
-                </p>
-            </div>
+          <div className="grid grid-cols-2 gap-2">
+            {(["admin", "doctor", "patient", "pharmacist"] as Role[]).map(
+              (r) => (
+                <button
+                  key={r}
+                  onClick={() => fillDemo(r)}
+                  className="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md text-sm"
+                >
+                  {r}
+                </button>
+              )
+            )}
+          </div>
         </div>
-    );
+
+        {/* SIGNUP */}
+        <p className="text-gray-400 text-center mt-4">
+          Don't have an account?{" "}
+          <span
+            className="text-cyan-400 cursor-pointer hover:underline"
+            onClick={() => router.push("/auth/register")}
+          >
+            Sign Up
+          </span>
+        </p>
+      </div>
+    </div>
+  );
 }

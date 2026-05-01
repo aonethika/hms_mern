@@ -119,3 +119,29 @@ export const markAllNotificationsReadAdmin = async () => {
     const res = await authRequest.put("/admin/notifications/all");
     return res.data;
 };
+
+
+// Monthly revenue
+export const getMonthlyRevenueApi = async (month?: number, year?: number) => {
+  const res = await authRequest.get("/admin/revenue/monthly", {
+    params: { month, year },
+  });
+  return res.data;
+};
+
+// Daily revenue
+export const getDailyRevenueApi = async (date?: string) => {
+  const res = await authRequest.get("/admin/revenue/daily", {
+    params: { date },
+  });
+  return res.data;
+};
+
+
+// Yearly revenue
+export const getYearlyRevenueApi = async (year: Number) => {
+  const res = await authRequest.get("/admin/revenue/yearly", {
+    params: { year },
+  });
+  return res.data;
+};

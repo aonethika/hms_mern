@@ -28,7 +28,7 @@ export const registerUser = async (req, res) => {
     if (existingUser)
       return res.status(400).json({ success: false, message: "User already exists" });
 
-    if (role && !["admin", "doctor", "patient"].includes(role))
+    if (role && !["admin", "doctor", "patient", "pharmacist"].includes(role))
       return res.status(400).json({ success: false, message: "Invalid role" });
 
     const hashedPassword = await argon2.hash(password);

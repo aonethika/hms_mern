@@ -73,6 +73,20 @@ const appointmentSchema = new mongoose.Schema(
     },
     prescriptionId: { type: mongoose.Schema.Types.ObjectId, ref: "Prescription" },
 
+    vitals: {
+  bloodPressure: String,   
+  temperature: Number,    
+
+  bpStatus: {
+    type: String,
+    enum: ["low", "normal", "high"]
+  },
+
+  tempStatus: {
+    type: String,
+    enum: ["low", "normal", "high"]
+  }
+},
     followUpRequired: {
       type: Boolean,
       default: false,
@@ -81,6 +95,12 @@ const appointmentSchema = new mongoose.Schema(
     followUpDate: {
       type: Date,
     },
+
+    caseType: {
+    type: String,
+    enum: ["normal", "emergency", "insurance"],
+    default: "normal"
+  },
 
     parentAppointmentId: {
       type: mongoose.Schema.Types.ObjectId,

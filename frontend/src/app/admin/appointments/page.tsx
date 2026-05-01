@@ -2,7 +2,9 @@
 
 import { getAvailableDoctorsByDateAdmin } from "@/app/shared/api/admin.api";
 import { getAllAppointmentsApi } from "@/app/shared/api/appointments.api";
+
 import React, { useEffect, useState } from "react";
+import VitalsModal from "../components/VitalsModal";
 
 const getToday = () => {
   const d = new Date();
@@ -15,38 +17,40 @@ export default function Page() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const doctorsRes = await getAvailableDoctorsByDateAdmin(selectedDate);
 
-        const result = await Promise.all(
-          doctorsRes.data.map(async (doc: any) => {
-            const appointmentsRes = await getAllAppointmentsApi(doc.doctorId, selectedDate);
-            console.log(appointmentsRes);
-            
-            const sorted = (appointmentsRes.appointments || []).sort(
-              (a: any, b: any) =>
-                new Date(a.tokenGeneratedAt).getTime() - new Date(b.tokenGeneratedAt).getTime()
-            );
-            return { doctor: doc, appointments: sorted };
-          })
+  const [showVitals, setShowVitals] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+
+  const fetchData = async () => {
+  setLoading(true);
+  try {
+    const doctorsRes = await getAvailableDoctorsByDateAdmin(selectedDate);
+
+    const result = await Promise.all(
+      doctorsRes.data.map(async (doc: any) => {
+        const appointmentsRes = await getAllAppointmentsApi(doc.doctorId, selectedDate);
+
+        const sorted = (appointmentsRes.appointments || []).sort(
+          (a: any, b: any) =>
+            new Date(a.tokenGeneratedAt).getTime() - new Date(b.tokenGeneratedAt).getTime()
         );
 
-        setData(result);
-      } catch (err) {
-        console.error("Error fetching appointments", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+        return { doctor: doc, appointments: sorted };
+      })
+    );
 
-    fetchData();
-  }, [selectedDate]);
+    setData(result);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  console.log(data);
-  
+useEffect(() => {
+  fetchData();
+}, [selectedDate]);
+
 
   const getStatusLabel = (queueStatus: string) => {
     switch (queueStatus) {
@@ -77,6 +81,15 @@ export default function Page() {
         return "bg-gray-700/40 text-gray-400";
     }
   };
+
+
+ const [selectedVitals, setSelectedVitals] = useState<any>(null);
+
+const openVitals = (appointmentId: string, vitals: any) => {
+  setSelectedAppointmentId(appointmentId);
+  setSelectedVitals(vitals || null);
+  setShowVitals(true);
+};
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200 p-4">
@@ -111,23 +124,27 @@ export default function Page() {
                 {item.appointments.map((appt: any, i: number) => (
                   <div
                     key={i}
-                    className={`bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 flex items-center justify-between ${
-                      appt.queueStatus === "no_show" ? "opacity-80" : ""
+                    className={`bg-gray-800 border border-gray-700 rounded-lg p-3 space-y-2 ${
+                      appt.queueStatus === "no_show" ? "opacity-70" : ""
                     }`}
                   >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-100 truncate">
-                        {appt.patient?.name || appt.patientId?.name}
-                      </p>
-                      <p className="text-xs text-gray-400">{appt.source}</p>
-                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-100 truncate">
+                          {appt.patient?.name || appt.patientId?.name}
+                        </p>
+                        <p className="text-xs text-gray-400">{appt.source}</p>
+                      </div>
 
-                    <div className="text-center mx-2">
-                      <p className="text-base font-semibold text-white">{appt.token}</p>
-                      <p className="text-[10px] text-gray-500">{appt.tokenType}</p>
-                    </div>
+                      <div className="text-center">
+                        <p className="text-base font-semibold text-white">
+                          {appt.token}
+                        </p>
+                        <p className="text-[10px] text-gray-500">
+                          {appt.tokenType}
+                        </p>
+                      </div>
 
-                    <div>
                       <span
                         className={`text-[10px] px-2 py-1 rounded ${getStatusClasses(
                           appt.queueStatus
@@ -136,6 +153,15 @@ export default function Page() {
                         {getStatusLabel(appt.queueStatus)}
                       </span>
                     </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openVitals(appt._id, appt.vitals)}
+                        className="bg-cyan-500 hover:bg-cyan-600 text-xs px-3 py-1 rounded w-full"
+                      >
+                        {appt.vitals ? "Edit Vitals" : "Add Vitals"}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -143,6 +169,15 @@ export default function Page() {
           ))}
         </div>
       )}
+
+      {showVitals && (
+    <VitalsModal
+      appointmentId={selectedAppointmentId}
+      vitals={selectedVitals}
+      onClose={() => setShowVitals(false)}
+      onSaved={fetchData} 
+    />
+  )}
     </div>
   );
 }

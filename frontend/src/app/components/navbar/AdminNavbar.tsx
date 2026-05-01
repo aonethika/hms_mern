@@ -93,6 +93,7 @@ export default function AdminNavbar() {
             { name: "Add Doctor", path: "/admin/add-doctor" },
             { name: "Departments", path: "/admin/departments" },
             { name: "Leaves", path: "/admin/leaves" },
+            { name: "Revenue", path: "/admin/revenue" },
           ].map((item) => (
             <Link
               key={item.path}

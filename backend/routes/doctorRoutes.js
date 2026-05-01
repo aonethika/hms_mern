@@ -7,6 +7,7 @@ import {
   completeAppointmentByDoctor,
   createPrescription,
   doctorMarkFollowUp,
+  getAppointmentByIdDoctor,
   getAppointmentsByDateAndStatus,
   getDoctorAppointmentsByStatus,
   getDoctorDashboardStats,
@@ -23,11 +24,13 @@ import {
   markAllNotificationsReadDoctor,
   markNotificationReadDoctor,
   requestLeave,
+  searchMedicines,
   skipCurrentPatientByDoctor,
   startConsultation,
   updateDoctorAvailability,
   updateDoctorSelf
 } from "../controllers/doctorController.js";
+
 
 const router = express.Router();
 
@@ -46,6 +49,9 @@ router.put("/update-profile", updateDoctorSelf)
 
 router.put("/appointment/:appointmentId/start", startConsultation);
 
+router.get("/appointment/:appointmentId", getAppointmentByIdDoctor);
+
+
 router.patch("/complete/:appointmentId", completeAppointmentByDoctor);
 
 router.patch("/skip-current", skipCurrentPatientByDoctor);
@@ -53,6 +59,8 @@ router.patch("/skip-current", skipCurrentPatientByDoctor);
 router.put("/appointment/:appointmentId/follow-up", doctorMarkFollowUp);
 
 router.post("/appointment/:appointmentId/prescription", createPrescription);
+
+router.get("/medicines/search", searchMedicines);
 
 router.get("/prescription/:prescriptionId", getPrescriptionById)
 
@@ -67,7 +75,6 @@ router.get("/follow-ups", getMyFollowUpsDoctor);
 router.put("/availability", updateDoctorAvailability);
 
 router.get("/appointments", getDoctorAppointmentsByStatus);
-
 
 router.post("/leave-request", requestLeave)
 

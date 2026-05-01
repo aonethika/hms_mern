@@ -15,6 +15,7 @@ import {
   getRemainingAppointments,
   markNoShowInternal,
   skipPatient,
+  updateVitals,
 } from "../controllers/appoinmentController.js";
 
 const router = express.Router();
@@ -28,6 +29,8 @@ router.get("/test-no-show", async (req, res) => {
 router.use(authMiddleware);
 
 router.post("/", roleMiddleware("admin"), createAppointmentByAdmin);
+
+router.patch("/:appointmentId/vitals", updateVitals);
 
 router.get("/all", roleMiddleware("admin"), fecthAllAppointments);
 

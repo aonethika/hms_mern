@@ -86,7 +86,7 @@ console.log(history);
                       <div className="flex-1 pr-4">
                         <p className="mb-1"><span className="font-semibold">Consulted By:</span> Dr. {presc.doctorId?.name}</p>
                         <p className="mb-1"><span className="font-semibold">Diagnosis:</span> {presc.diagnosis || "NA"}</p>
-                        <p className="mb-1"><span className="font-semibold">Meedicines:</span> {presc.medicines.map((m) => m.name).join(", ") || "Na"}</p>
+                        <p className="mb-1"><span className="font-semibold">Medicines:</span> {presc.medicines.map((m) => m.name).join(", ") || "Na"}</p>
                         {presc.followUpDate &&(
                           <p className="mb-1"><span className="font-semibold">Follow-up on:</span> {new Date(presc.followUpDate).toLocaleDateString()}</p>
                        

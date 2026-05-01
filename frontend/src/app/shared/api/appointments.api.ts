@@ -11,6 +11,7 @@ export interface AdminBookingAppointemntData {
   age?: string;
   phone: string;
   email?: string;
+  caseType: "normal" | "emergency" | "insurance";
   bloodGroup?: string;
   doctorId: string;
   departmentId: string;
@@ -26,6 +27,7 @@ export const createAppointmentByAdminApi = async (
   data: AdminBookingAppointemntData
 ): Promise<AdminAppointmentResponse> => {
   const res = await authRequest.post("/appointments", data);
+  
   return res.data;
 };
 
@@ -38,6 +40,18 @@ export const generateTokenApi = async (appointmentId: string) => {
   return res.data;
 };
 
+// -------Add Vitals---------------------
+
+export const addVitalsApi = async (
+  appointmentId: string,
+  data: { bloodPressure: string; temperature: string }
+) => {
+  const res = await authRequest.patch(
+    `/appointments/${appointmentId}/vitals`,
+    data
+  );
+  return res.data;
+};
 // ----------------- FETCH APPOINTMENTS -----------------
 /**
  * Get all appointments for a doctor on a given date

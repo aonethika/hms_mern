@@ -64,6 +64,11 @@ export const getMyPatientHistory = async (patientId: string) => {
   return res.data;
 };
 
+export const searchMedicinesApi = async (query: string) => {
+  const res = await authRequest.get(`/doctor/medicines/search?query=${query}`);
+  return res.data;
+};
+
 /** Create prescription for an appointment */
 export const createPrescriptionApi = async (appointmentId: string, data: any) => {
   const res = await authRequest.post(`/doctor/appointment/${appointmentId}/prescription`, data);
@@ -75,6 +80,11 @@ export const getPatientByAppointmentId = async (appointmentId: string) => {
   const res = await authRequest.get(`/doctor/patient/${appointmentId}`);
   return res.data;
 };
+
+export const getAppointentByIdApi = async(appointmentId: string)=>{
+  const res = await authRequest.get(`/doctor/appointment/${appointmentId}`);
+  return res.data;
+}
 
 // ----------------- APPOINTMENTS -----------------
 /** Get appointments (optionally filter by date or status) */

@@ -1,6 +1,6 @@
 "use client";
 
-import { createPrescriptionApi, getPatientByAppointmentId } from "@/app/shared/api/doctor.api";
+import { createPrescriptionApi, getAppointentByIdApi, getPatientByAppointmentId, searchMedicinesApi } from "@/app/shared/api/doctor.api";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
@@ -19,8 +19,13 @@ export default function Page() {
   const router = useRouter();
   const appointmentId = params.id as string;
 
+  const [appointment, setAppointment] = useState<{vitals:{bloodPressure: String, temperature: string}}| null>(null)
+
   const [patient, setPatient] = useState<{ name: string; dob: string; gender: string; phone: string } | null>(null);
   const [doctor, setDoctor] = useState<{ name: string; qualification: string[]; specialization: string } | null>(null);
+
+  const [medicineResults, setMedicineResults] = useState<any[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchPatient = async () => {
@@ -28,8 +33,16 @@ export default function Page() {
       setPatient(res.patient);
       setDoctor(res.appointment.doctorId);
     };
+    const fetchAppointment = async()=>{
+      const res = await getAppointentByIdApi(appointmentId);
+      setAppointment(res.appointment);
+    }
+    fetchAppointment();
     fetchPatient();
   }, [appointmentId]);
+
+  console.log(appointment);
+  
 
   const [prescription, setPrescription] = useState<any>({
     diagnosis: "",
@@ -40,6 +53,12 @@ export default function Page() {
     patientId: { name: "", dob: "", gender: "" },
     doctorId: { name: "", qualification: ["MBBS"], specialization: "" },
   });
+
+  useEffect(() => {
+  const handleClick = () => setActiveIndex(null);
+  window.addEventListener("click", handleClick);
+  return () => window.removeEventListener("click", handleClick);
+}, []);
 
   useEffect(() => {
     if (patient && doctor) {
@@ -53,6 +72,8 @@ export default function Page() {
 
   console.log("doctor",doctor);
   
+
+  console.log("results", medicineResults);
 
   const handleChange = (key: string, value: any) => {
     setPrescription((prev: any) => ({ ...prev, [key]: value }));
@@ -116,13 +137,58 @@ export default function Page() {
           <span className="font-semibold text-cyan-400 text-sm">Medicines</span>
           {prescription.medicines.map((med: any, idx: number) => (
             <div key={idx} className="flex gap-2 items-center">
-              <input
-                type="text"
-                placeholder="Name"
-                value={med.name}
-                onChange={(e) => handleMedicineChange(idx, "name", e.target.value)}
-                className="flex-1 p-1.5 rounded bg-gray-700 text-white border border-gray-600 text-sm"
-              />
+              <div className="relative flex-1">
+  <input
+    type="text"
+    placeholder="Search medicine..."
+    value={med.name}
+    onFocus={() => setActiveIndex(idx)}
+    onChange={async (e) => {
+  const value = e.target.value;
+
+  handleMedicineChange(idx, "name", value);
+
+  if (value.trim().length < 2) {
+    setMedicineResults([]);
+    return;
+  }
+
+  try {
+    const res = await searchMedicinesApi(value);
+
+    const list = res?.medicines || [];
+
+    setMedicineResults(list); 
+  } catch (err) {
+    console.error("Search error:", err);
+    setMedicineResults([]);
+  }
+}}
+    className="w-full p-1.5 rounded bg-gray-700 text-white border border-gray-600 text-sm"
+  />
+
+
+
+  {/* Dropdown */}
+  {medicineResults.length > 0 && (
+    <div className="absolute z-50 bg-gray-800 border border-gray-600 w-full mt-1 rounded max-h-40 overflow-y-auto">
+      {medicineResults.map((m: any, i: number) => (
+        <div
+          key={m.id || m.name || i}
+          onClick={() => {
+            handleMedicineChange(idx, "name", m.name);
+            handleMedicineChange(idx, "medicineId", m.id || m._id); 
+            setMedicineResults([]);
+            setActiveIndex(null);
+          }}
+          className="p-2 hover:bg-gray-700 cursor-pointer text-sm"
+        >
+          {m.name}
+        </div>
+      ))}
+    </div>
+  )}
+</div>
               <input
                 type="text"
                 placeholder="Dosage"
@@ -175,12 +241,21 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="px-5 py-2 border-b border-gray-300 text-sm flex flex-wrap justify-between gap-2 text-black">
-          <span><span className="font-semibold">Name:</span> {patient?.name || "—"}</span>
-          <span><span className="font-semibold">Age:</span> {calculateAge(patient?.dob)}</span>
-          <span><span className="font-semibold">Gender:</span> {patient?.gender || "—"}</span>
-        </div>
+       <div className="px-5 py-2 border-b border-gray-300 text-sm flex items-center justify-between gap-4 text-black overflow-x-auto whitespace-nowrap">
+        <span><span className="font-semibold">Name:</span> {patient?.name || "—"}</span>
+        <span><span className="font-semibold">Age:</span> {calculateAge(patient?.dob)}</span>
+        <span><span className="font-semibold">Gender:</span> {patient?.gender || "—"}</span>
 
+        <span>
+          <span className="font-semibold">BP:</span>{" "}
+          {appointment?.vitals?.bloodPressure || "—"}
+        </span>
+
+        <span>
+          <span className="font-semibold">Temp:</span>{" "}
+          {appointment?.vitals?.temperature || "—"} °F
+        </span>
+      </div>
         <h2 className="text-center text-sm font-semibold text-black my-2 tracking-widest">PRESCRIPTION</h2>
 
         <div className="px-5 mb-2">

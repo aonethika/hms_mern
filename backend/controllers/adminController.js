@@ -575,6 +575,23 @@ export const adminDashboardStats = async (req, res) => {
       createdAt: { $gte: todayStart, $lte: todayEnd }
     });
 
+    const revenueData = await Prescription.aggregate([
+  {
+    $match: {
+      status: "billed",
+      billedAt: { $gte: todayStart, $lte: todayEnd }
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      totalRevenue: { $sum: "$bill.totalAmount" }
+    }
+  }
+]);
+
+const todayRevenue = revenueData[0]?.totalRevenue || 0;
+
     res.status(200).json({
       success: true,
       stats: {
@@ -583,7 +600,8 @@ export const adminDashboardStats = async (req, res) => {
         remainingAppointments,
         cancelledAppointments,
         todayWalkins,
-        todayNewPatients
+        todayNewPatients,
+        todayRevenue
       }
     });
 
@@ -1278,6 +1296,187 @@ export const getPatientHistory = async (req, res) => {
     });
   }
 };
+export const getMonthlyRevenue = async (req, res) => {
+  try {
+    const { month, year } = req.query;
 
+    const targetMonth = month
+      ? parseInt(month)
+      : new Date().getMonth() + 1;
 
+    const targetYear = year
+      ? parseInt(year)
+      : new Date().getFullYear();
 
+    const data = await Prescription.aggregate([
+      {
+        $match: {
+          "bill.status": "billed",
+          "bill.billedAt": { $ne: null },
+        },
+      },
+      {
+        $addFields: {
+          year: { $year: "$bill.billedAt" },
+          month: { $month: "$bill.billedAt" },
+          day: { $dayOfMonth: "$bill.billedAt" },
+        },
+      },
+      {
+        $match: {
+          year: targetYear,
+          month: targetMonth,
+        },
+      },
+      {
+        $group: {
+          _id: "$day",
+          totalRevenue: { $sum: "$bill.totalAmount" },
+          totalMedicines: { $sum: "$bill.medicineTotal" },
+          totalDoctorFee: { $sum: "$bill.doctorFee" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const chart = data.map((d) => ({
+      day: d._id,
+      revenue: d.totalRevenue,
+      medicines: d.totalMedicines,
+      doctorFee: d.totalDoctorFee,
+    }));
+
+  
+    const totals = data.reduce(
+      (acc, curr) => {
+        acc.totalRevenue += curr.totalRevenue || 0;
+        acc.totalMedicines += curr.totalMedicines || 0;
+        acc.totalDoctorFee += curr.totalDoctorFee || 0;
+        return acc;
+      },
+      {
+        totalRevenue: 0,
+        totalMedicines: 0,
+        totalDoctorFee: 0,
+      }
+    );
+
+    res.json({
+      success: true,
+      data: {
+        chart,
+        ...totals,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+};
+
+export const getDailyRevenue = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    const targetDate = date ? new Date(date) : new Date();
+
+    const start = new Date(targetDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(targetDate);
+    end.setHours(23, 59, 59, 999);
+
+    const data = await Prescription.aggregate([
+      {
+        $match: {
+          "bill.status": "billed",
+          "bill.billedAt": {   
+            $gte: start,
+            $lte: end
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$bill.totalAmount" },
+          totalMedicines: { $sum: "$bill.medicineTotal" },
+          totalDoctorFee: { $sum: "$bill.doctorFee" }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: data[0] || {
+        totalRevenue: 0,
+        totalMedicines: 0,
+        totalDoctorFee: 0
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+};
+
+export const getYearlyRevenue = async (req, res) => {
+  try {
+    const { year } = req.query;
+
+    const targetYear = year
+      ? parseInt(year)
+      : new Date().getFullYear();
+
+    const data = await Prescription.aggregate([
+      {
+        $match: {
+          "bill.status": "billed",
+          "bill.billedAt": { $ne: null },
+        },
+      },
+      {
+        $addFields: {
+          year: { $year: "$bill.billedAt" },
+          month: { $month: "$bill.billedAt" },
+        },
+      },
+      {
+        $match: {
+          year: targetYear,
+        },
+      },
+      {
+        $group: {
+          _id: "$month",
+          revenue: { $sum: "$bill.totalAmount" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const monthNames = [
+      "Jan","Feb","Mar","Apr","May","Jun",
+      "Jul","Aug","Sep","Oct","Nov","Dec"
+    ];
+
+    const chart = Array.from({ length: 12 }).map((_, i) => {
+      const found = data.find(d => d._id === i + 1);
+
+      return {
+        month: monthNames[i],
+        revenue: found?.revenue || 0,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: chart,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+};

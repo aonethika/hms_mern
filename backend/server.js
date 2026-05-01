@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import cors from "cors";
+import { pool } from "./config/postgres.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -10,6 +11,7 @@ import departmentRoutes from "./routes/departmentRoutes.js";
 import doctorRoutes from "./routes/doctorRoutes.js";
 import publicRoutes from "./routes/publicRoutes.js";
 import patientRoutes from "./routes/patientRoutes.js";
+import pharmacyRoutes from "./routes/pharmacyRoutes.js"
 
 import startAppointmentReminder from "./services/appointmentRemainder.js";
 import { startCronJobs } from "./cron/cronJobs.js";
@@ -24,16 +26,10 @@ const allowed = [
   "http://13.206.89.129:3000",
   "http://localhost:3000"
 ];
-
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowed.includes(origin)) return callback(null, true);
-    return callback(null, true);
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
 app.use(express.json());
@@ -51,6 +47,7 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/doctor", doctorRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/api/pharmacy", pharmacyRoutes);
 
 app.get("/api/test", (req, res) => {
   res.send("Backend working");
@@ -59,10 +56,14 @@ app.get("/api/test", (req, res) => {
 const startServer = async () => {
   try {
     await connectDB();
+
+    const res = await pool.query("SELECT NOW()");
+    console.log("PostgreSQL connected:", res.rows);
+
     startCronJobs();
     startAppointmentReminder();
     app.listen(5000, "0.0.0.0", () => {
-      console.log("Server running on port 5000 🚀");
+      console.log("Server running on port 5000");
     });
   } catch (error) {
     console.error("Server failed to start:", error);

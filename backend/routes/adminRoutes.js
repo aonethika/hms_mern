@@ -1,6 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/verifyToken.js';
-import { addDoctors, adminDashboardStats, approveLeave, assignDoctorDepartment, checkDoctorAvailability, deactivateDoctor, deactivatePatient, deleteDoctor, editAdminProfile, getAllAvailableDoctorsByDateAdmin, getALLDoctorsAdmin, getAllLeaveRequests, getAllPatients, getAllPatientsMinimal, getDoctorById, getDoctorLeavesAdmin, getDoctorMonthlyAttendanceAdmin, getDoctorQueue, getNotificationsAdmin, getPatientById, getPatientHistory, getPrescriptionByAppointmentId, markAllNotificationsReadAdmin, markNotificationReadAdmin, patientRegistration, reactivateDoctor, rejectLeave, sendBroadcastNotification, updateDoctor, updateLeaveStatus } from '../controllers/adminController.js';
+import { addDoctors, adminDashboardStats, approveLeave, assignDoctorDepartment, checkDoctorAvailability, deactivateDoctor, deactivatePatient, deleteDoctor, editAdminProfile, getAllAvailableDoctorsByDateAdmin, getALLDoctorsAdmin, getAllLeaveRequests, getAllPatients, getAllPatientsMinimal, getDailyRevenue, getDoctorById, getDoctorLeavesAdmin, getDoctorMonthlyAttendanceAdmin, getDoctorQueue, getMonthlyRevenue, getNotificationsAdmin, getPatientById, getPatientHistory, getPrescriptionByAppointmentId, getYearlyRevenue, markAllNotificationsReadAdmin, markNotificationReadAdmin, patientRegistration, reactivateDoctor, rejectLeave, sendBroadcastNotification, updateDoctor, updateLeaveStatus } from '../controllers/adminController.js';
 import roleMiddleware from '../middleware/roleMiddleware.js';
 import { getPatientsByPhone } from '../controllers/appoinmentController.js';
 
@@ -19,7 +19,9 @@ router.put("/doctor/:doctorId/deactivate", roleMiddleware("admin"), deactivateDo
 router.put("/doctor/:doctorId/reactivate", roleMiddleware("admin"), reactivateDoctor);
 router.delete("/doctor/:doctorId/delete", roleMiddleware("admin"), deleteDoctor);
 
-router.get("/dashboard", roleMiddleware("admin"), adminDashboardStats)
+router.get("/dashboard", roleMiddleware("admin"), adminDashboardStats);
+router.get("/revenue/monthly", getMonthlyRevenue);
+
 
 router.post("/patient", roleMiddleware("admin"), patientRegistration);
 router.get("/patients", roleMiddleware("admin"), getAllPatients);
@@ -50,6 +52,11 @@ router.get("/attendance/:doctorId",getDoctorMonthlyAttendanceAdmin);
 
 router.get("/leaves/:doctorId", getDoctorLeavesAdmin);
 
+router.get("/revenue/monthly", getMonthlyRevenue);
+
+router.get("/revenue/daily", getDailyRevenue);
+
+router.get("/revenue/yearly", getYearlyRevenue);
 
 router.get("/doctor/:id/availability", checkDoctorAvailability);
 

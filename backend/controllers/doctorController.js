@@ -1,4 +1,5 @@
 
+import { pool } from "../config/postgres.js";
 import Appointment from "../models/Appointment.js";
 import Leave from "../models/Leave.js";
 import Notification from "../models/Notification.js";
@@ -154,6 +155,37 @@ export const getDoctorTodayQueue = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
+export const getAppointmentByIdDoctor = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+
+    const appointment = await Appointment.findById(appointmentId)
+      .populate("doctorId", "name specialization")
+      .populate("patientId", "name phone gender dob")
+      .populate("departmentId", "name");
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      appointment,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+
 // --------------------------START CONSULATION-------------------------
 
 export const startConsultation = async (req, res) => {
@@ -350,6 +382,29 @@ export const createPrescription = async (req, res) => {
 
     const patient = await Patient.findById(appointment.patientId);
 
+
+    const enrichedMedicines = await Promise.all(
+    medicines.map(async (med) => {
+    const result = await pool.query(
+      "SELECT name, price FROM medicines WHERE id = $1",
+      [med.medicineId]
+    );
+
+    const medicineData = result.rows[0];
+
+
+    return {
+      medicineId: med.medicineId,
+      name: medicineData?.name || med.name,
+      price: medicineData?.price || 0,
+      dosage: med.dosage,
+      frequency: med.frequency,
+      duration: med.duration,
+      instructions: med.instructions,
+    };
+  })
+);
+
     const prescription = await Prescription.create({
       doctorId,
       patientId: appointment.patientId,
@@ -357,7 +412,8 @@ export const createPrescription = async (req, res) => {
       diagnosis,
       notes,
       advice,
-      medicines,
+      status: "pending",
+      medicines: enrichedMedicines,
       followUp: !!followUpDate,
       followUpDate,
     });
@@ -388,23 +444,30 @@ export const createPrescription = async (req, res) => {
     const bookedWaiting = waitingRaw.filter(appt => appt.tokenType === "booked");
     const walkInWaiting = waitingRaw.filter(appt => appt.tokenType !== "booked");
 
-    const bookedReady = bookedWaiting.filter(appt =>
-      appt.timeSlot?.startTime &&
-      now >= new Date(
-        new Date(appt.date).setHours(
-          ...appt.timeSlot.startTime.split(":").map(Number)
-        )
-      )
-    );
+    const bookedReady = bookedWaiting
+  .filter(appt => {
+    if (!appt.timeSlot?.startTime) return false;
 
-    let nextPatient = null;
+    const [h, m] = appt.timeSlot.startTime.split(":").map(Number);
+    const slotTime = new Date(appt.date);
+    slotTime.setHours(h, m, 0, 0);
 
-    if (bookedReady.length > 0) {
-      nextPatient = bookedReady[0];
-    } else if (walkInWaiting.length > 0) {
-      nextPatient = walkInWaiting[0];
-    }
+    return now >= slotTime;
+  })
+  .sort((a, b) => {
+    const [ha, ma] = a.timeSlot.startTime.split(":").map(Number);
+    const [hb, mb] = b.timeSlot.startTime.split(":").map(Number);
 
+    return (ha * 60 + ma) - (hb * 60 + mb);
+  });
+
+let nextPatient = null;
+
+if (bookedReady.length > 0) {
+  nextPatient = bookedReady[0];
+} else {
+  nextPatient = walkInWaiting[0];
+}
 
     if (nextPatient) {
       nextPatient.queueStatus = "in_consultation";
@@ -543,27 +606,35 @@ export const skipCurrentPatientByDoctor = async (req, res) => {
       token: { $ne: null }
     }).sort({ tokenNumber: 1 });
 
-    // 🔥 Split properly
+  
     const bookedWaiting = waitingRaw.filter(appt => appt.tokenType === "booked");
     const walkInWaiting = waitingRaw.filter(appt => appt.tokenType !== "booked");
 
-    // 🔥 Only allow booked when time reached
-    const bookedReady = bookedWaiting.filter(appt =>
-      appt.timeSlot?.startTime &&
-      now >= new Date(
-        new Date(appt.date).setHours(
-          ...appt.timeSlot.startTime.split(":").map(Number)
-        )
-      )
-    );
+  
+   const bookedReady = bookedWaiting
+  .filter(appt => {
+    if (!appt.timeSlot?.startTime) return false;
 
-    let nextPatient = null;
+    const [h, m] = appt.timeSlot.startTime.split(":").map(Number);
+    const slotTime = new Date(appt.date);
+    slotTime.setHours(h, m, 0, 0);
 
-    if (bookedReady.length > 0) {
-      nextPatient = bookedReady[0];
-    } else if (walkInWaiting.length > 0) {
-      nextPatient = walkInWaiting[0];
-    }
+    return now >= slotTime;
+  })
+  .sort((a, b) => {
+    const [ha, ma] = a.timeSlot.startTime.split(":").map(Number);
+    const [hb, mb] = b.timeSlot.startTime.split(":").map(Number);
+
+    return (ha * 60 + ma) - (hb * 60 + mb);
+  });
+
+let nextPatient = null;
+
+if (bookedReady.length > 0) {
+  nextPatient = bookedReady[0];
+} else {
+  nextPatient = walkInWaiting[0];
+}
 
     if (nextPatient) {
       nextPatient.queueStatus = "in_consultation";
@@ -1117,6 +1188,31 @@ export const markAllNotificationsReadDoctor = async (req, res) => {
       success: false,
       message: "Failed to mark notifications as read"
     });
+  }
+};
+
+
+export const searchMedicines = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ success: false, message: "Query required" });
+    }
+
+    const result = await pool.query(
+      "SELECT id, name, price FROM medicines WHERE name ILIKE $1 LIMIT 10",
+      [`%${query}%`]
+    );
+
+    res.json({
+      success: true,
+      medicines: result.rows
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
   }
 };
 

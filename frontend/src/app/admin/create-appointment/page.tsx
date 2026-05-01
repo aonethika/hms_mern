@@ -10,6 +10,7 @@ import {
 } from "@/app/shared/api/appointments.api";
 import useDepartmentStore from "@/app/shared/store/department.store";
 import React, { useEffect, useMemo, useState } from "react";
+import VitalsModal from "../components/VitalsModal";
 
 const getToday = () => {
   const d = new Date();
@@ -41,6 +42,7 @@ export default function Page() {
     email: "",
     bloodGroup: "",
     notes: "",
+    caseType:"normal",
     doctorId: "",
     departmentId: ""
   });
@@ -52,6 +54,9 @@ export default function Page() {
     dob: "",
     bloodGroup: ""
   });
+
+  const [showVitals, setShowVitals] = useState(false);
+  const [createdAppointmentId, setCreatedAppointmentId] = useState("");
 
   useEffect(() => {
     fetchDepartments();
@@ -85,6 +90,7 @@ export default function Page() {
       gender: "",
       dob: "",
       email: "",
+      caseType: "normal",
       bloodGroup: "",
       notes: "",
       doctorId: doc.doctorId || "",
@@ -93,8 +99,13 @@ export default function Page() {
   };
 
   const handleSearch = async () => {
+  console.log("SEARCH CLICKED");
+  console.log("PHONE VALUE:", form.phone);
+
+  if (!form.phone) return;
     if (!form.phone) return;
     const res = await getPatientsByPhone(form.phone);
+    console.log("API RAW RESPONSE:", res);
     let results = res?.data || [];
     if (selectedPatient) {
       results = results.filter((p: any) => p._id !== selectedPatient);
@@ -188,6 +199,7 @@ export default function Page() {
       dob: form.dob,
       bloodGroup: form.bloodGroup || undefined,
       doctorId: form.doctorId,
+      caseType: form.caseType,
       departmentId: form.departmentId,
       notes: form.notes,
       source: "walk-in",
@@ -195,13 +207,18 @@ export default function Page() {
     });
 
     const appointment = res.appointment;
+    console.log("appp", appointment);
+    
 
     if (selectedDate === getToday()) {
       await generateTokenApi(appointment._id);
     }
 
     alert("Appointment booked successfully");
+
+    setCreatedAppointmentId(appointment._id);
     setShowModal(false);
+    setShowVitals(true);
   };
 
   return (
@@ -264,7 +281,37 @@ export default function Page() {
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
           <div className="bg-gray-900 p-6 rounded-xl w-full max-w-3xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <select
+              value={form.caseType}
+              onChange={(e) =>
+                setForm({ ...form, caseType: e.target.value })
+              }
+              className="
+                
+                px-3 py-2
+                rounded-lg
+                bg-gray-900
+                text-gray-100
+                border border-gray-700
+                focus:outline-none
+                focus:ring-2 focus:ring-cyan-500
+                focus:border-cyan-500
+                transition
+                text-sm
+              "
+            >
+              <option value="normal" className="bg-gray-900 text-white">
+                Normal
+              </option>
+              <option value="emergency" className="bg-gray-900 text-red-400">
+                Emergency
+              </option>
+              <option value="insurance" className="bg-gray-900 text-yellow-400">
+                Insurance
+              </option>
+            </select>
             <div className="flex gap-2">
+              
               <input
                 placeholder="Phone"
                 value={form.phone}
@@ -464,6 +511,13 @@ export default function Page() {
           </div>
         </div>
       )}
+
+      {showVitals && (
+    <VitalsModal
+      appointmentId={createdAppointmentId}
+      onClose={() => setShowVitals(false)}
+    />
+  )}
     </div>
   );
 }

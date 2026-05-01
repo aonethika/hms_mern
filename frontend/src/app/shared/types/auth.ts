@@ -10,7 +10,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
-  role: "admin" | "patient" | "doctor";
+  role: "admin" | "patient" | "doctor" | "pharmacist";
 
   patients?: Patient[];
 }

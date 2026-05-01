@@ -19,6 +19,60 @@ const calculateAge = (dobStr) => {
   return age;
 };
 
+// ----------------------BP STATUS-------------------------------
+const getBPStatus = (bp, age) => {
+  const [sys, dia] = bp.split("/").map(Number);
+
+  if (!sys || !dia) return "normal"; 
+
+  // Child
+  if (age <= 12) {
+    if (sys < 85 || dia < 55) return "low";
+    if (sys > 120 || dia > 80) return "high";
+    return "normal";
+  }
+
+  // Adult
+  if (age <= 59) {
+    if (sys < 90 || dia < 60) return "low";
+    if (sys > 140 || dia > 90) return "high";
+    return "normal";
+  }
+
+  // senior
+  if (age >= 60) {
+    if (sys < 100 || dia < 60) return "low";
+    if (sys > 150 || dia > 95) return "high";
+    return "normal";
+  }
+};
+
+// ------------------------TEMPERATURE STATUS---------------------------
+const getTempStatus = (temp, age) => {
+  if (!temp) return "normal";
+
+  // Child
+  if (age <= 12) {
+    if (temp < 97) return "low";
+    if (temp > 99) return "high";
+    return "normal";
+  }
+
+  // Adult
+  if (age <= 59) {
+    if (temp < 97) return "low";
+    if (temp > 99.5) return "high";
+    return "normal";
+  }
+
+  // senior
+  if (age >= 60) {
+    if (temp < 96.5) return "low";
+    if (temp > 99) return "high";
+    return "normal";
+  }
+};
+
 // -------------------- CREATE APPOINTMENT BY ADMIN----------------------------
 export const createAppointmentByAdmin = async (req, res) => {
   try {
@@ -33,6 +87,7 @@ export const createAppointmentByAdmin = async (req, res) => {
       source,
       doctorId,
       departmentId,
+      caseType,
       timeSlot,
       notes,
       date
@@ -60,6 +115,10 @@ export const createAppointmentByAdmin = async (req, res) => {
         success: false,
         message: "Name, phone, dob and gender are required"
       });
+    }
+
+    if (!["normal", "emergency", "insurance"].includes(caseType)) {
+      return res.status(400).json({ message: "Invalid caseType" });
     }
 
     const doctor = await User.findById(doctorId)
@@ -176,6 +235,7 @@ export const createAppointmentByAdmin = async (req, res) => {
       departmentId,
       date: selectedDate,
       timeSlot: timeSlot || null,
+      caseType: caseType || "normal",
       source: source || "walk-in",
       notes
     });
@@ -191,6 +251,45 @@ export const createAppointmentByAdmin = async (req, res) => {
       success: false,
       message: err?.message || "Failed to create appointment",
     });
+  }
+};
+
+// -------------------update vitals-----------------------------
+
+export const updateVitals = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { bloodPressure, temperature } = req.body;
+
+    const appointment = await Appointment.findById(appointmentId);
+
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    const patient = await Patient.findById(appointment.patientId);
+    const age = calculateAge(patient.dob);
+
+    const bpStatus = getBPStatus(bloodPressure, age);
+    const tempStatus = getTempStatus(temperature, age);
+
+    appointment.vitals = {
+      bloodPressure,
+      temperature,
+      bpStatus,
+      tempStatus
+    };
+
+    await appointment.save();
+
+    res.json({
+      success: true,
+      message: "Vitals updated",
+      appointment
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false });
   }
 };
 
