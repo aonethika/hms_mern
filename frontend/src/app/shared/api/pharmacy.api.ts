@@ -1,5 +1,12 @@
 import { authRequest } from "./auth.api";
 
+
+export const editPharmacistProfileApi = async (data: any) => {
+    const res = await authRequest.put("/pharmacy/update", data);
+    return res.data;
+};
+
+
 export const getPendingPrescriptionsApi = async () => {
   const res = await authRequest.get("/pharmacy/prescriptions/pending");
   return res.data;

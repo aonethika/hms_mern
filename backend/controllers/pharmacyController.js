@@ -47,7 +47,7 @@ export const createMedicines = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
@@ -649,3 +649,24 @@ export const markAllNotificationsPharmacist = async (req, res) => {
     });
   }
 };
+
+
+export const editPharmacistProfile = async(req, res) =>{
+  try{
+    const userId = req.user._id;
+
+     const user = await User.findOneAndUpdate(
+      { _id: userId, role: "pharmacist" },
+      req.body,
+      { returnDocument: "after", runValidators: true }
+    )
+      .select("-password")
+
+      if(!user) return res.status(404).json({success: false, message: "No user found"})
+      
+      res.status(200).json({success: true, message:"Admin Profile Updated", user})
+
+  }catch(err){
+    res.status(500).json({success: false, message: err.message})
+  }
+}

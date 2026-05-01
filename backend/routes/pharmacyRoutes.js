@@ -2,12 +2,14 @@ import express from "express";
 
 import roleMiddleware from "../middleware/roleMiddleware.js";
 import { authMiddleware } from "../middleware/verifyToken.js";
-import { addStock, createMedicines, dispenseMedicine, generateBill, getAllBills, getBillByPrescriptionId, getBillStatus, getMedicines, getNotificationsPharmacist, getPendingPrescriptions, getPrescriptionMedicines, markAllNotificationsPharmacist, markBillPayment, markNotificationReadPharmacist } from "../controllers/pharmacyController.js";
+import { addStock, createMedicines, dispenseMedicine, editPharmacistProfile, generateBill, getAllBills, getBillByPrescriptionId, getBillStatus, getMedicines, getNotificationsPharmacist, getPendingPrescriptions, getPrescriptionMedicines, markAllNotificationsPharmacist, markBillPayment, markNotificationReadPharmacist } from "../controllers/pharmacyController.js";
 
 const router = express.Router();
 
 router.use(authMiddleware);
 router.use(roleMiddleware("pharmacist"))
+
+router.put("/update",editPharmacistProfile);
 
 router.post("/medicines", createMedicines);
 router.get("/medicines", getMedicines);
