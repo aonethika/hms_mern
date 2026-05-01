@@ -1,11 +1,16 @@
 import pkg from "pg";
 const { Pool } = pkg;
 
-export const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: Number(process.env.DB_PORT || 5432),
-  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
-});
+export const createPool = () => {
+  return new Pool({
+    user: String(process.env.DB_USER || "").trim(),
+    host: String(process.env.DB_HOST || "").trim(),
+    database: String(process.env.DB_NAME || "").trim(),
+    password: String(process.env.DB_PASSWORD || "").trim(),
+    port: Number(process.env.DB_PORT || 5432),
+    ssl:
+      process.env.NODE_ENV === "production"
+        ? { rejectUnauthorized: false }
+        : false,
+  });
+};

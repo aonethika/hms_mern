@@ -1,10 +1,10 @@
 import {v4 as uuidv4} from "uuid"
 import Prescription from "../models/Prescription.js";
-import { pool } from "../config/postgres.js";
+import { createPool } from "../config/postgres.js";
 import Notification from "../models/Notification.js";
 
 
-
+ const pool = createPool();
 
 const calculateTotalMedicines = (frequency, duration) => {
   if (!frequency) return 0;

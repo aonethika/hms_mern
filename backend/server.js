@@ -1,8 +1,11 @@
-import express from "express";
 import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
+
 import connectDB from "./config/db.js";
 import cors from "cors";
-import { pool } from "./config/postgres.js";
+import { createPool } from "./config/postgres.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -16,7 +19,6 @@ import pharmacyRoutes from "./routes/pharmacyRoutes.js"
 import startAppointmentReminder from "./services/appointmentRemainder.js";
 import { startCronJobs } from "./cron/cronJobs.js";
 
-dotenv.config();
 
 const app = express();
 
@@ -53,12 +55,21 @@ app.get("/api/test", (req, res) => {
   res.send("Backend working");
 });
 
+console.log("PG CONFIG:", {
+  user: process.env.DB_USER,
+  pass: process.env.DB_PASSWORD,
+  type: typeof process.env.DB_PASSWORD
+});
+
 const startServer = async () => {
   try {
     await connectDB();
 
+    const pool = createPool(); 
+
     const res = await pool.query("SELECT NOW()");
     console.log("PostgreSQL connected:", res.rows);
+    
 
     startCronJobs();
     startAppointmentReminder();

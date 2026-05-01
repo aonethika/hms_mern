@@ -1,11 +1,13 @@
 
-import { pool } from "../config/postgres.js";
+import { createPool } from "../config/postgres.js";
 import Appointment from "../models/Appointment.js";
 import Leave from "../models/Leave.js";
 import Notification from "../models/Notification.js";
 import Patient from "../models/Patient.js";
 import Prescription from "../models/Prescription.js";
 import User from "../models/User.js"
+
+ const pool = createPool();
 
 // -----------------GET PATIENTS OF A DOCTOR FOR DOCTORS------------------------------
 
