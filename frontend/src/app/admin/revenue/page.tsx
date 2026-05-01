@@ -56,13 +56,20 @@ export default function RevenuePage() {
     ? monthly.chart
     : [];
 
-  const yearlyChart: any[] = Array.isArray(yearly)
+
+    const yearlyData: any[] = Array.isArray(yearly)
   ? yearly
-  : Array.isArray(yearly?.chart)
-  ? yearly.chart
-  : Array.isArray(yearly?.data)
-  ? yearly.data
-  : [];
+  : yearly?.data || yearly?.chart || [];
+
+  const yearlyTotals = yearlyData.reduce(
+  (acc, item) => {
+    acc.totalRevenue += item.revenue || 0;
+    acc.totalMedicines += item.medicines || 0;
+    acc.totalDoctorFee += item.doctorFee || 0;
+    return acc;
+  },
+  { totalRevenue: 0, totalMedicines: 0, totalDoctorFee: 0 }
+);
   // ---------------- FETCH ----------------
   const fetchData = async () => {
     try {
@@ -226,15 +233,15 @@ export default function RevenuePage() {
 
           {/* TOTALS */}
           <div className="grid grid-cols-3 gap-4 mb-4">
-            <Card title="Total Revenue" value={yearly?.totalRevenue} />
-            <Card title="Medicine Revenue" value={yearly?.totalMedicines} />
-            <Card title="Doctor Fee" value={yearly?.totalDoctorFee} />
+            <Card title="Total Revenue" value={yearlyTotals.totalRevenue} />
+            <Card title="Medicine Revenue" value={yearlyTotals.totalMedicines} />
+            <Card title="Doctor Fee" value={yearlyTotals.totalDoctorFee} />
           </div>
 
           {/* CHART */}
           <div className="h-[250px] bg-gray-900 p-4 rounded-xl">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={yearlyChart}>
+              <BarChart data={yearlyData}>
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />

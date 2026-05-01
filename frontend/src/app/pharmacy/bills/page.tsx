@@ -111,14 +111,6 @@ export default function BillsPage() {
       {/* HEADER */}
       <div className="flex justify-between items-start mb-6">
 
-        <div>
-          <h1 className="text-2xl font-semibold text-cyan-400">
-            Billing Dashboard
-          </h1>
-          <p className="text-sm text-gray-400">
-            Manage and track bills
-          </p>
-        </div>
 
         {/* DATE FILTER TOP RIGHT */}
         <div className="flex flex-col items-end gap-2">
