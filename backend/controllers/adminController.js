@@ -1421,6 +1421,8 @@ export const getDailyRevenue = async (req, res) => {
   }
 };
 
+
+
 export const getYearlyRevenue = async (req, res) => {
   try {
     const { year } = req.query;
@@ -1443,14 +1445,14 @@ export const getYearlyRevenue = async (req, res) => {
         },
       },
       {
-        $match: {
-          year: targetYear,
-        },
+        $match: { year: targetYear },
       },
       {
         $group: {
           _id: "$month",
           revenue: { $sum: "$bill.totalAmount" },
+          medicines: { $sum: "$bill.medicineTotal" },
+          doctorFee: { $sum: "$bill.doctorFee" },
         },
       },
       { $sort: { _id: 1 } },
@@ -1467,12 +1469,30 @@ export const getYearlyRevenue = async (req, res) => {
       return {
         month: monthNames[i],
         revenue: found?.revenue || 0,
+        medicines: found?.medicines || 0,
+        doctorFee: found?.doctorFee || 0,
       };
     });
 
+    
+    const totals = chart.reduce(
+      (acc, item) => {
+        acc.totalRevenue += item.revenue;
+        acc.totalMedicines += item.medicines;
+        acc.totalDoctorFee += item.doctorFee;
+        return acc;
+      },
+      {
+        totalRevenue: 0,
+        totalMedicines: 0,
+        totalDoctorFee: 0,
+      }
+    );
+
     res.json({
       success: true,
-      data: chart,
+      ...totals,
+      chart,
     });
 
   } catch (err) {

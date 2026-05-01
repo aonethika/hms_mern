@@ -20,7 +20,7 @@ router.put("/doctor/:doctorId/reactivate", roleMiddleware("admin"), reactivateDo
 router.delete("/doctor/:doctorId/delete", roleMiddleware("admin"), deleteDoctor);
 
 router.get("/dashboard", roleMiddleware("admin"), adminDashboardStats);
-router.get("/revenue/monthly", getMonthlyRevenue);
+
 
 
 router.post("/patient", roleMiddleware("admin"), patientRegistration);
