@@ -57,19 +57,9 @@ export default function RevenuePage() {
     : [];
 
 
-    const yearlyData: any[] = Array.isArray(yearly)
-  ? yearly
-  : yearly?.data || yearly?.chart || [];
+  const yearlyData = yearly?.chart || [];
 
-  const yearlyTotals = yearlyData.reduce(
-  (acc, item) => {
-    acc.totalRevenue += item.revenue || 0;
-    acc.totalMedicines += item.medicines || 0;
-    acc.totalDoctorFee += item.doctorFee || 0;
-    return acc;
-  },
-  { totalRevenue: 0, totalMedicines: 0, totalDoctorFee: 0 }
-);
+
   // ---------------- FETCH ----------------
   const fetchData = async () => {
     try {
@@ -85,10 +75,11 @@ export default function RevenuePage() {
         setMonthly(res?.data || {});
       }
 
-      if (view === "yearly") {
-        const res = await getYearlyRevenueApi(year);
-        setYearly(res?.data || {});
-      }
+    if (view === "yearly") {
+    const res = await getYearlyRevenueApi(year);
+
+    setYearly(res?.data || {});
+    }
     } finally {
       setLoading(false);
     }
@@ -232,11 +223,9 @@ export default function RevenuePage() {
           />
 
           {/* TOTALS */}
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <Card title="Total Revenue" value={yearlyTotals.totalRevenue} />
-            <Card title="Medicine Revenue" value={yearlyTotals.totalMedicines} />
-            <Card title="Doctor Fee" value={yearlyTotals.totalDoctorFee} />
-          </div>
+          <Card title="Total Revenue" value={yearly?.totalRevenue} />
+        <Card title="Medicine Revenue" value={yearly?.totalMedicines} />
+        <Card title="Doctor Fee" value={yearly?.totalDoctorFee} />
 
           {/* CHART */}
           <div className="h-[250px] bg-gray-900 p-4 rounded-xl">
